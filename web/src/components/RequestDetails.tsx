@@ -6,6 +6,7 @@ import {
   Settings2,
 } from "lucide-react";
 import type { DemoCoverage, Draft, Site } from "../types";
+import { siteLetter } from "../analysis";
 
 type Props = {
   draft: Draft;
@@ -65,7 +66,7 @@ export function RequestDetails({
                 onChange={() => toggle(site)}
               />
               <span className="site-letter">
-                {String.fromCharCode(65 + index)}
+                {siteLetter(site.name, index)}
               </span>
               <span>{site.name}</span>
               <MapPin size={12} />

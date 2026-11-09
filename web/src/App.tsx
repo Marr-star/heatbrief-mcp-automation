@@ -25,7 +25,7 @@ import {
 import { api, ApiError, downloadPdf, downloadText, setCsrf } from "./api";
 import { RequestDetails } from "./components/RequestDetails";
 import { demoTimeIssue } from "./demo";
-import { comparisonSummary } from "./analysis";
+import { comparisonSummary, setSiteOrder } from "./analysis";
 import {
   ClientBriefing,
   ComparisonCards,
@@ -65,12 +65,27 @@ const requestDraft = (value: Draft): Draft => ({
   locations: value.locations,
 });
 const welcome =
-  "Tell me which sites, date, time and timezone to compare. I’ll run the comparison directly and show both highest and lowest readings. You can also ask questions about the result.";
-const message = (role: "assistant" | "user", content: string): ChatMessage => ({
+  "Hi! Tell me which sites, date, time and timezone to compare, for example “Compare all demo sites on July 15, 2026 at 3pm Phoenix time”. I’ll run it and show the highest and lowest readings.";
+const startSuggestions = [
+  "Compare all demo sites tomorrow at 3pm Phoenix time",
+  "What can you do?",
+];
+const resultSuggestions = [
+  "Which is highest?",
+  "What's the average?",
+  "Show the evidence",
+];
+const message = (
+  role: "assistant" | "user",
+  content: string,
+  suggestions?: string[],
+): ChatMessage => ({
   id: crypto.randomUUID(),
   role,
   content,
+  suggestions,
 });
+const welcomeMessage = () => message("assistant", welcome, startSuggestions);
 const statusTitle = (value: string) =>
   value === "approved_for_manual_send"
     ? "Approved"
@@ -93,6 +108,8 @@ function Modal({
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
+    // showModal() focuses the close button; start in the first field instead.
+    dialog?.querySelector<HTMLElement>("input, textarea, select")?.focus();
     return () => dialog?.close();
   }, []);
   return (
@@ -218,9 +235,7 @@ export default function App() {
   const [bootError, setBootError] = useState("");
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [result, setResult] = useState<Briefing | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    message("assistant", welcome),
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage()]);
   const [input, setInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<
@@ -249,6 +264,10 @@ export default function App() {
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const messageList = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  // Return the cursor to the message box once a reply or run finishes, unless the
+  // person has since moved focus somewhere else on the page.
+  const refocusComposer = useRef(false);
   const busy = run?.state === "queued" || run?.state === "running";
   const timeIssue =
     boot?.data_mode === "mock"
@@ -265,6 +284,7 @@ export default function App() {
       .then((data) => {
         if (disposed) return;
         setCsrf(data.csrf);
+        setSiteOrder(data.catalog.map((site) => site.name));
         setBoot(data);
         setHistory(data.history);
         if (data.latest) {
@@ -278,6 +298,7 @@ export default function App() {
             message(
               "assistant",
               `Your latest saved briefing is ready. ${comparisonSummary(data.latest)} These are fictional demo readings. Ask for a new comparison or a detail about this result.`,
+              resultSuggestions,
             ),
           ]);
         }
@@ -305,6 +326,14 @@ export default function App() {
       messageList.current.scrollTop = messageList.current.scrollHeight;
   }, [messages, chatBusy]);
   useEffect(() => {
+    if (chatBusy || busy || !refocusComposer.current) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || active === composer.current) {
+      composer.current?.focus();
+    }
+    refocusComposer.current = false;
+  }, [chatBusy, busy]);
+  useEffect(() => {
     if (!run || !["queued", "running"].includes(run.state)) return;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -322,6 +351,7 @@ export default function App() {
             message(
               "assistant",
               `${comparisonSummary(next.result!)} ${next.result!.replayed ? "I reused the saved briefing for this identical request." : "The report and follow-up draft are saved."} These are fictional demo readings. Ask me about either extreme, the average or the ranking.`,
+              resultSuggestions,
             ),
           ]);
           setHistory(await api<HistoryItem[]>("/history"));
@@ -365,6 +395,7 @@ export default function App() {
     setMessages((previous) => [...previous, message("user", text.trim())]);
     setInput("");
     setChatBusy(true);
+    refocusComposer.current = true;
     try {
       const response = await api<ChatReply>("/chat", {
         method: "POST",
@@ -394,7 +425,7 @@ export default function App() {
       }
       setMessages((previous) => [
         ...previous,
-        message("assistant", response.message),
+        message("assistant", response.message, response.suggestions),
       ]);
     } catch (error) {
       setMessages((previous) => [
@@ -421,7 +452,7 @@ export default function App() {
     setSelectedSite(null);
     setTab("overview");
     setMobileView("assistant");
-    setMessages([message("assistant", welcome)]);
+    setMessages([welcomeMessage()]);
     setInput("");
   }
   function applyDemoTime(value: Pick<Draft, "date" | "time" | "timezone">) {
@@ -452,7 +483,7 @@ export default function App() {
     setTab("overview");
     setMobileView("assistant");
     setSelectedSite(null);
-    setMessages([message("assistant", welcome)]);
+    setMessages([welcomeMessage()]);
     void sendChat(
       "Compare the three demo sites for our site visit on 2025-09-20 at 14:00 America/Phoenix.",
       next,
@@ -506,6 +537,7 @@ export default function App() {
         message(
           "assistant",
           "This is a saved briefing. Its original coordinates, requested time and evidence are available below. You can review it or replay the identical request. Replays reuse the saved report.",
+          resultSuggestions,
         ),
       ]);
     } catch (error) {
@@ -598,6 +630,9 @@ export default function App() {
       </div>
     );
   const sites = result?.request.locations || draft.locations;
+  const lastMessage = messages[messages.length - 1];
+  const suggestions =
+    lastMessage?.role === "assistant" ? lastMessage.suggestions || [] : [];
   const measurements = result?.measurements || [];
   const lowest = result?.comparison.lowest_locations || [];
   const filteredHistory = history.filter((item) =>
@@ -771,7 +806,16 @@ export default function App() {
                   </div>
                 ) : null}
               </div>
-              <div className="prompt-chips">
+              <div className="prompt-chips" aria-label="Suggested replies">
+                {suggestions.map((text) => (
+                  <button
+                    key={text}
+                    onClick={() => void sendChat(text)}
+                    disabled={busy || chatBusy}
+                  >
+                    <ArrowRight size={12} /> {text}
+                  </button>
+                ))}
                 <button onClick={() => loadDemo()} disabled={busy || chatBusy}>
                   <Sun size={13} /> Run the demo
                 </button>
@@ -787,11 +831,16 @@ export default function App() {
                   Ask HeatBrief
                 </label>
                 <textarea
+                  ref={composer}
                   id="chat-message"
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   maxLength={3000}
-                  placeholder="What are you planning?"
+                  placeholder={
+                    busy
+                      ? "Preparing your briefing… you can ask questions when it finishes."
+                      : "Ask a question or describe a comparison"
+                  }
                   rows={2}
                   disabled={chatBusy || busy}
                   onKeyDown={(event) => {
@@ -916,7 +965,8 @@ export default function App() {
                       <div className="results-meta">
                         <span>
                           {displayDate(result.request.date)} <i />{" "}
-                          {result.request.time} {result.request.timezone}
+                          {result.request.time.slice(0, 5)}{" "}
+                          {result.request.timezone}
                         </span>
                         <span>Temperature comparison</span>
                       </div>

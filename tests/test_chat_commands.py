@@ -354,3 +354,140 @@ async def test_just_tell_me_is_a_question_not_a_selection_change(chat_store):
     )
     assert answer["action"] == "answer"
     assert answer["draft"]["locations"] == draft.model_dump()["locations"]
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("hello", "Hi! I compare temperatures"),
+        ("Thanks!", "You're welcome"),
+        ("never mind", "Nothing is running"),
+    ],
+)
+async def test_small_talk_gets_a_human_reply_not_a_field_checklist(chat_store, message, expected):
+    answer = await reply(ChatInput(message=message), chat_store[0])
+    assert answer["action"] == "answer"
+    assert expected in answer["message"]
+    assert "business question" not in answer["message"]
+
+
+async def test_cancel_clears_a_pending_run(chat_store):
+    answer = await reply(ChatInput(message="cancel", pending_action="run"), chat_store[0])
+    assert answer["pending_action"] == "none"
+    assert "cancelled" in answer["message"]
+
+
+async def test_city_names_are_explained_and_exact_site_reply_runs(chat_store):
+    store = chat_store[0]
+    first = await reply(
+        ChatInput(message="compare tempe and scottsdale on july 4 2026 at 3 pm phoenix time"),
+        store,
+    )
+    assert first["action"] == "clarify"
+    assert "city names" in first["message"]
+    assert "Tempe Riverside and Scottsdale Courtyard" in first["suggestions"]
+    second = await reply(
+        ChatInput(
+            message=first["suggestions"][0],
+            draft=Draft.model_validate(first["draft"]),
+            pending_action=first["pending_action"],
+        ),
+        store,
+    )
+    assert second["action"] == "run"
+    assert [site["name"] for site in second["draft"]["locations"]] == [
+        "Tempe Riverside",
+        "Scottsdale Courtyard",
+    ]
+
+
+@pytest.mark.parametrize(
+    "message,zone",
+    [
+        ("at 3pm pacific time", "America/Los_Angeles"),
+        ("at 3pm MST", "America/Phoenix"),
+        ("at 3pm Arizona time", "America/Phoenix"),
+        ("at 3pm eastern", "America/New_York"),
+        ("at 3pm america/phoenix", "America/Phoenix"),
+    ],
+)
+def test_common_timezone_names(message, zone):
+    assert (
+        extract_explicit("Compare all demo sites on 2026-07-04 " + message, Draft()).timezone
+        == zone
+    )
+
+
+def test_slash_like_words_are_not_timezones():
+    draft = extract_explicit("Compare all demo sites and/or more on 2026-07-04", Draft())
+    assert draft.timezone == ""
+
+
+def test_iana_timezone_does_not_select_phoenix_civic_plaza():
+    draft = Draft(
+        locations=[site for site in extract_explicit("all demo sites", Draft()).locations]
+    )
+    changed = extract_explicit(
+        "Compare Tempe Riverside and Scottsdale Courtyard at 5pm America/Phoenix", draft
+    )
+    assert [site.name for site in changed.locations] == ["Tempe Riverside", "Scottsdale Courtyard"]
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [("17/07/2026", "2026-07-17"), ("7/17/2026", "2026-07-17"), ("2026/07/04", "2026-07-04")],
+)
+def test_unambiguous_numeric_dates(text, expected):
+    assert extract_explicit("Compare all demo sites on " + text, Draft()).date == expected
+
+
+async def test_ambiguous_numeric_date_asks_which_one(chat_store):
+    answer = await reply(
+        ChatInput(message="Compare all demo sites on 07/04/2026 at 3pm Phoenix time"),
+        chat_store[0],
+    )
+    assert answer["action"] == "clarify"
+    assert answer["suggestions"] == ["July 4, 2026", "April 7, 2026"]
+
+
+async def test_invalid_inputs_get_plain_explanations(chat_store):
+    store = chat_store[0]
+    clock = await reply(
+        ChatInput(message="Compare all demo sites on 2026-07-04 at 25:00 Phoenix time"), store
+    )
+    assert "25:00 is not a valid time" in clock["message"]
+    day = await reply(
+        ChatInput(message="Compare all demo sites on February 30, 2026 at noon Phoenix time"),
+        store,
+    )
+    assert "not a real calendar date" in day["message"]
+
+
+def test_part_of_day_never_reuses_an_out_of_period_time():
+    morning = Draft(time="08:00", date="2026-07-04", timezone="America/Phoenix")
+    assert extract_explicit("same sites tomorrow afternoon", morning).time == ""
+    afternoon = Draft(time="14:00", date="2026-07-04", timezone="America/Phoenix")
+    assert extract_explicit("same sites tomorrow afternoon", afternoon).time == "14:00"
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("How hot was Tempe?", "Tempe Riverside read 34.1 °C, the lowest"),
+        ("What was the temperature at Scottsdale?", "Scottsdale Courtyard read 36.7 °C"),
+        ("Which is hotter, Tempe or Phoenix?", "Phoenix Civic Plaza is warmer"),
+        ("Which is cooler, Phoenix or Scottsdale?", "Phoenix Civic Plaza is cooler"),
+        ("What's the spread?", "The spread is 2.6 °C"),
+        ("Show it in Fahrenheit", "°F"),
+        ("Why is Scottsdale the hottest?", "can't say why"),
+    ],
+)
+async def test_site_specific_followups_use_saved_readings(chat_store, message, expected):
+    store, saved = chat_store
+    draft = Draft.model_validate({key: saved["request"][key] for key in Draft.model_fields})
+    answer = await reply(
+        ChatInput(message=message, draft=draft, briefing_id=saved["request_id"]), store
+    )
+    assert answer["action"] == "answer"
+    assert expected in answer["message"]
+    assert answer["draft"]["locations"] == draft.model_dump()["locations"]

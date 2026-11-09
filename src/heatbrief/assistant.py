@@ -5,8 +5,9 @@ import json
 import os
 import re
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 from typing import Literal
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, available_timezones
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -15,7 +16,7 @@ from heatbrief.demo import DEMO_COVERAGE_MESSAGE, DEMO_TIME, validate_demo_time
 from heatbrief.errors import HeatBriefError
 from heatbrief.models import BriefingRequest, Location
 from heatbrief.reporting import narrative
-from heatbrief.statistics import question_focus
+from heatbrief.statistics import highest, question_focus
 
 CATALOG = [
     {"name": "Phoenix Civic Plaza", "latitude": 33.4484, "longitude": -112.074},
@@ -62,11 +63,157 @@ SITE_ALIASES = {
     "Scottsdale Courtyard": ("scottsdale", "courtyard"),
 }
 
+# Ordered: the first matching phrase wins. Short abbreviations need word boundaries.
+TIMEZONE_WORDS = [
+    (
+        r"\b(?:phoenix|arizona)(?: local)? time\b|\barizona\b|\bmst\b"
+        r"|\bmountain standard time\b|\b(?:local|site) time\b",
+        "America/Phoenix",
+    ),
+    (r"\b(?:pacific(?: time)?|pst|pdt|los angeles time)\b", "America/Los_Angeles"),
+    (r"\b(?:mountain time|mdt|denver time)\b", "America/Denver"),
+    (r"\b(?:central time|cst|cdt|chicago time)\b", "America/Chicago"),
+    (r"\b(?:eastern(?: time)?|est|edt|new york(?: time)?)\b", "America/New_York"),
+    (r"\b(?:cairo(?: time)?|egypt(?:ian)? time|eet)\b", "Africa/Cairo"),
+    (r"\b(?:london(?: time)?|uk time|bst)\b", "Europe/London"),
+    (r"\b(?:utc|gmt|zulu)\b", "UTC"),
+]
+IANA_PATTERN = r"\b[A-Za-z_]+/[A-Za-z_]+(?:/[A-Za-z_]+)?\b"
+# Hours (local, 24h) that each part of the day covers; night wraps past midnight.
+PERIODS = {
+    "morning": (5, 12, ["8am", "9am", "11am"]),
+    "afternoon": (12, 17, ["1pm", "3pm", "4pm"]),
+    "evening": (17, 21, ["6pm", "7pm", "8pm"]),
+    "tonight": (17, 29, ["7pm", "9pm", "11pm"]),
+    "night": (21, 29, ["9pm", "11pm", "midnight"]),
+}
+START_SUGGESTIONS = [
+    "Compare all demo sites tomorrow at 3pm Phoenix time",
+    "What can you do?",
+]
+RESULT_SUGGESTIONS = ["Which is highest?", "What's the average?", "Show the evidence"]
+
+
+def normalize(message):
+    """Lowercase and expand common contractions so patterns stay simple."""
+    lower = message.lower().strip().replace("’", "'")
+    for short, full in [
+        ("what's", "what is"),
+        ("where's", "where is"),
+        ("how's", "how is"),
+        ("who's", "who is"),
+        ("which's", "which is"),
+        ("it's", "it is"),
+        ("that's", "that is"),
+    ]:
+        lower = re.sub(rf"\b{re.escape(short)}\b", full, lower)
+    return lower
+
+
+@lru_cache(maxsize=1)
+def known_zones():
+    return {name.lower(): name for name in available_timezones()}
+
+
+def find_timezone(text):
+    for candidate in re.findall(IANA_PATTERN, text):
+        zone = known_zones().get(candidate.lower())
+        if zone:
+            return zone
+    lower = text.lower()
+    for pattern, zone in TIMEZONE_WORDS:
+        if re.search(pattern, lower):
+            return zone
+    return None
+
+
+def without_timezones(lower):
+    """A timezone such as 'Phoenix time' or America/Phoenix is not a site selection."""
+    lower = re.sub(IANA_PATTERN, " ", lower)
+    return re.sub(r"\bphoenix(?: local)? time\b", " ", lower)
+
+
+def mentioned_sites(text):
+    """Catalog sites named in text, by full name or short alias, in catalog order."""
+    lower = without_timezones(text.lower())
+    found = []
+    for site in CATALOG:
+        names = [site["name"].lower(), *SITE_ALIASES[site["name"]]]
+        if any(re.search(r"\b" + re.escape(name) + r"\b", lower) for name in names):
+            found.append(site["name"])
+    return found
+
+
+def natural_join(items):
+    items = list(items)
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def readable_date(value):
+    try:
+        day = date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return value
+    return f"{calendar.month_name[day.month]} {day.day}, {day.year}"
+
+
+def numeric_date(text):
+    """Parse 7/4/2026-style dates. Returns (iso or None, ambiguous options or None)."""
+    match = re.search(r"\b(20\d{2})[/.](\d{1,2})[/.](\d{1,2})\b", text)
+    if match:
+        year, month, day = int(match[1]), int(match[2]), int(match[3])
+        candidates = [(month, day)]
+    else:
+        match = re.search(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](20\d{2})\b", text)
+        if not match:
+            return None, None
+        first, second, year = int(match[1]), int(match[2]), int(match[3])
+        if first > 12 and second <= 12:
+            candidates = [(second, first)]
+        elif second > 12 and first <= 12:
+            candidates = [(first, second)]
+        elif first == second or first > 12:
+            candidates = [(first, second)]
+        else:
+            candidates = [(first, second), (second, first)]
+    valid = []
+    for month, day in candidates:
+        try:
+            valid.append(date(year, month, day).isoformat())
+        except ValueError:
+            pass
+    if len(valid) == 1:
+        return valid[0], None
+    if len(valid) > 1:
+        return None, valid
+    month, day = candidates[0]
+    # Keep an impossible date visible so validation can explain it.
+    return f"{year}-{month:02d}-{day:02d}", None
+
+
+def mentioned_period(lower):
+    lower = re.sub(r"\bgood (?:morning|afternoon|evening|night)\b", " ", lower)
+    for period in PERIODS:
+        if re.search(rf"\b{period}\b", lower):
+            return period
+    return None
+
+
+def time_in_period(value, period):
+    start, end, _examples = PERIODS[period]
+    try:
+        hour = int(value[:2])
+    except (TypeError, ValueError):
+        return False
+    return start <= hour < end or start <= hour + 24 < end
+
 
 def select_locations(message, draft):
     lower = message.lower()
     # A timezone mention is not a request to select Phoenix Civic Plaza.
-    selection_text = re.sub(r"\bphoenix time\b", "", lower)
+    selection_text = without_timezones(lower)
     all_sites = bool(
         re.search(
             r"\b(?:three|all|3)(?:\s+(?:three|3))?\s+(?:demo\s+)?"
@@ -119,28 +266,21 @@ def select_locations(message, draft):
 
 def extract_explicit(message, draft, reference_date=None):
     data = draft.model_dump()
-    lower = message.lower()
+    lower = normalize(message)
     if not data["question"] or re.search(
         r"\b(compare|which|highest|lowest|hottest|coldest|visit|event)\b", lower
     ):
         data["question"] = message[:1000]
     data["locations"] = select_locations(message, draft)
-    zone = re.search(r"\b[A-Za-z_]+/[A-Za-z_]+(?:/[A-Za-z_]+)?\b", message)
+    zone = find_timezone(message)
     if zone:
-        data["timezone"] = zone.group()
-    else:
-        for label, name in [
-            ("phoenix", "America/Phoenix"),
-            ("cairo", "Africa/Cairo"),
-            ("new york", "America/New_York"),
-        ]:
-            if label + " time" in lower:
-                data["timezone"] = name
-        if re.search(r"\butc\b", lower):
-            data["timezone"] = "UTC"
+        data["timezone"] = zone
     iso_date = re.search(r"\b20\d{2}-\d{2}-\d{2}\b", message)
+    numeric, _ambiguous = numeric_date(message)
     if iso_date:
         data["date"] = iso_date.group()
+    elif numeric:
+        data["date"] = numeric
     else:
         names = "|".join([*calendar.month_name[1:], *calendar.month_abbr[1:]])
         match = re.search(
@@ -189,6 +329,11 @@ def extract_explicit(message, draft, reference_date=None):
         data["time"] = "12:00"
     elif re.search(r"\bmidnight\b", lower):
         data["time"] = "00:00"
+    else:
+        # "Tomorrow afternoon" must not silently reuse an earlier morning time.
+        period = mentioned_period(lower)
+        if period and not time_in_period(data["time"], period):
+            data["time"] = ""
     return Draft.model_validate(data)
 
 
@@ -277,7 +422,7 @@ async def model_intake(message, draft, transport=None):
         ) from exc
 
 
-def response(message, draft, *, action="answer", pending="none"):
+def response(message, draft, *, action="answer", pending="none", suggestions=None):
     missing, errors = readiness(draft)
     return {
         "message": message,
@@ -288,7 +433,258 @@ def response(message, draft, *, action="answer", pending="none"):
         "validation_errors": errors,
         "action": action,
         "pending_action": pending,
+        "suggestions": list(suggestions or []),
     }
+
+
+def friendly_errors(errors, draft):
+    """Turn validator wording into something a person can act on."""
+    when = f"{readable_date(draft.date)} at {draft.time[:5]} ({draft.timezone})"
+    messages = []
+    for error in errors:
+        error = error.removeprefix("Value error, ")
+        if error == DEMO_COVERAGE_MESSAGE:
+            messages.append(
+                f"{when} is outside the demo window. Demo readings cover 2025-01-01 at "
+                "00:00 through 2027-12-31 at 23:59 America/Phoenix, every minute. Pick a "
+                "moment in that range. Live temperature data is not connected."
+            )
+        elif "valid date" in error:
+            messages.append(f"{draft.date} is not a real calendar date. Which date did you mean?")
+        elif "valid time" in error:
+            messages.append(f"{draft.time} is not a valid time. Try something like 3pm or 15:00.")
+        elif "IANA timezone" in error:
+            messages.append(
+                f"I don't recognise the timezone “{draft.timezone}”. Try Phoenix time, "
+                "Cairo time, UTC or a name such as America/Phoenix."
+            )
+        elif "ambiguous or nonexistent" in error:
+            messages.append(
+                f"{draft.time[:5]} on {readable_date(draft.date)} happens twice or not at all "
+                f"in {draft.timezone} because of a daylight-saving change. Choose another time."
+            )
+        else:
+            messages.append(error)
+    return " ".join(dict.fromkeys(messages))
+
+
+def missing_message(missing, draft, lower, pending):
+    """A plain-language request for the next details, with one-tap reply suggestions."""
+    labels = {
+        "business question": "what you'd like to compare",
+        "at least two named locations": "the sites",
+        "date": "a date",
+        "time": "a time",
+        "timezone": "a timezone",
+    }
+    needed = natural_join(labels[item] for item in missing)
+    lines = [f"To run this comparison I still need {needed}."]
+    suggestions = []
+    if "at least two named locations" in missing:
+        current = [site.name for site in draft.locations]
+        cities = [name for name in mentioned_sites(lower) if name not in current]
+        if len(current) == 1:
+            others = [site["name"] for site in CATALOG if site["name"] != current[0]]
+            lines.append(
+                f"Only {current[0]} is selected; a comparison needs at least two sites. "
+                "Add another one, or say “all demo sites”."
+            )
+            suggestions += ["All demo sites", f"Add {others[0]}"]
+        elif cities:
+            short = [SITE_ALIASES[name][0].title() for name in cities]
+            verb = "is a city name" if len(short) == 1 else "are city names"
+            lines.append(
+                f"{natural_join(short)} {verb}. The demo has one point in each: "
+                f"{natural_join(cities)}. Reply with the exact site names, or say "
+                "“all demo sites”."
+            )
+            if len(cities) > 1:
+                suggestions.append(natural_join(cities))
+            suggestions.append("All demo sites")
+        else:
+            lines.append(
+                "Name at least two of Phoenix Civic Plaza, Tempe Riverside and "
+                "Scottsdale Courtyard, or say “all demo sites”."
+            )
+            suggestions += ["All demo sites", "Tempe Riverside and Scottsdale Courtyard"]
+    if "date" in missing:
+        lines.append("Which date? For example July 15, 2026 or 2026-07-15.")
+        if not suggestions:
+            suggestions += ["Tomorrow", "July 15, 2026"]
+    if "time" in missing:
+        period = mentioned_period(lower)
+        if period:
+            examples = PERIODS[period][2]
+            lines.append(f"What time in the {period}? For example {examples[1]}.")
+        else:
+            examples = ["9am", "noon", "3pm"]
+            lines.append("What time? For example 3pm or 15:00.")
+        if not suggestions:
+            suggestions += examples
+    if "timezone" in missing:
+        lines.append(
+            "Which timezone? Phoenix time is the sites' local time; Cairo time or UTC also work."
+        )
+        if not suggestions:
+            suggestions += ["Phoenix time", "Cairo time", "UTC"]
+    if "business question" in missing and len(missing) == 1:
+        lines.append("Say “compare” or “run it” when you're ready.")
+        suggestions = suggestions or ["Run it"]
+    if pending == "run":
+        lines.append("I'll run it as soon as those details are in.")
+    return " ".join(lines), suggestions
+
+
+def saved_answer(lower, saved):
+    """Answer a follow-up question using only the saved comparison."""
+    comparison = saved["comparison"]
+    ranking = comparison["ranking"]
+    by_name = {row["name"]: row["temperature_c"] for row in ranking}
+    requested = [site["name"] for site in saved["request"]["locations"]]
+    named = [name for name in mentioned_sites(lower) if name in requested]
+    spread_said = False
+    if re.search(r"\b(?:fahrenheit|°f|deg(?:rees)? f)\b", lower):
+        message = (
+            "In °F, from coolest to warmest: "
+            + "; ".join(
+                f"{row['name']}: {row['temperature_c'] * 9 / 5 + 32:.1f} °F" for row in ranking
+            )
+            + f". Spread: {comparison['spread_c'] * 9 / 5:.1f} °F."
+        )
+        spread_said = True
+    elif re.search(r"\b(?:average|mean)\b", lower):
+        average = sum(row["temperature_c"] for row in ranking) / len(ranking)
+        message = f"The average of the {len(ranking)} returned readings is {average:.1f} °C."
+    elif re.search(r"\b(?:ranking|rank|order|list)\b", lower):
+        message = (
+            "From coolest to warmest: "
+            + "; ".join(f"{row['name']}: {row['temperature_c']:.1f} °C" for row in ranking)
+            + "."
+        )
+    elif re.search(r"\b(?:spread|difference|range|gap)\b", lower) and len(named) != 2:
+        high_value, high_names = highest(comparison)
+        message = (
+            f"The spread is {comparison['spread_c']:.1f} °C: {natural_join(high_names)} at "
+            f"{high_value:.1f} °C minus {natural_join(comparison['lowest_locations'])} at "
+            f"{comparison['lowest_c']:.1f} °C."
+        )
+        spread_said = True
+    elif len(named) >= 2:
+        rows = sorted(
+            ((name, by_name[name]) for name in named if name in by_name), key=lambda row: row[1]
+        )
+        if len(rows) < 2:
+            message = "Not all of those sites returned a reading in this comparison."
+        elif rows[0][1] == rows[-1][1]:
+            message = f"{natural_join(n for n, _ in rows)} are tied at {rows[0][1]:.1f} °C."
+        else:
+            focus = question_focus(lower)
+            pick, other = (rows[-1], rows[0]) if focus == "highest" else (rows[0], rows[-1])
+            word = "warmer" if focus == "highest" else "cooler"
+            message = (
+                f"Of {natural_join(n for n, _ in rows)}, {pick[0]} is {word} at "
+                f"{pick[1]:.1f} °C ({other[0]}: {other[1]:.1f} °C, a "
+                f"{abs(pick[1] - other[1]):.1f} °C difference)."
+            )
+    elif len(named) == 1:
+        name = named[0]
+        if name not in by_name:
+            message = f"No reading was returned for {name} in this comparison."
+        else:
+            value = by_name[name]
+            position = ""
+            if name in comparison["lowest_locations"]:
+                position = ", the lowest of the selected sites"
+            elif name in highest(comparison)[1]:
+                position = ", the highest of the selected sites"
+            message = f"{name} read {value:.1f} °C{position}."
+    else:
+        message = narrative(comparison, question_focus(lower))
+    if re.search(r"\bwhy\b", lower):
+        message = (
+            "The saved evidence records temperatures only, not causes such as shade, surfaces "
+            "or elevation, and these demo values are synthetic, so I can't say why. " + message
+        )
+    when = saved["request"]
+    tail = [] if spread_said else [f"Spread: {comparison['spread_c']:.1f} °C."]
+    tail.append(
+        f"This saved result is for {when['date']} at {when['time'][:5]} {when['timezone']}."
+    )
+    if comparison["mock"]:
+        tail.append("Readings are fictional; inspect Evidence for source IDs.")
+    return message + " " + " ".join(tail)
+
+
+def small_talk(lower, chat):
+    """Greetings, thanks and cancellations get a human reply, never a field checklist."""
+    has_result = bool(chat.briefing_id)
+    if re.fullmatch(
+        r"(?:hi|hello|hey|hiya|howdy|yo|greetings|good (?:morning|afternoon|evening))"
+        r"(?: there)?(?: heatbrief)?[!.,? ]*",
+        lower,
+    ):
+        if has_result:
+            return response(
+                "Hi! Your latest briefing is open. Ask me about it, or describe a new "
+                "comparison, for example “Compare all demo sites on July 15, 2026 at 3pm "
+                "Phoenix time”.",
+                chat.draft,
+                pending=chat.pending_action,
+                suggestions=RESULT_SUGGESTIONS,
+            )
+        return response(
+            "Hi! I compare temperatures across three demo sites in the Phoenix area: Phoenix "
+            "Civic Plaza, Tempe Riverside and Scottsdale Courtyard. Tell me a date, time and "
+            "timezone, for example “Compare all demo sites on July 15, 2026 at 3pm Phoenix "
+            "time”.",
+            chat.draft,
+            pending=chat.pending_action,
+            suggestions=START_SUGGESTIONS,
+        )
+    if re.fullmatch(
+        r"(?:thanks|thank you|thank you so much|thanks a lot|many thanks|thx|ty|cheers)"
+        r"(?: heatbrief)?[!.,? ]*",
+        lower,
+    ):
+        return response(
+            "You're welcome! Ask me anything else about the result, or start a new comparison."
+            if has_result
+            else "You're welcome! Tell me when you'd like to run a comparison.",
+            chat.draft,
+            pending=chat.pending_action,
+            suggestions=RESULT_SUGGESTIONS if has_result else START_SUGGESTIONS,
+        )
+    if re.fullmatch(
+        r"(?:cancel|stop|never ?mind|forget (?:it|that)|no|nope|no thanks|no thank you)"
+        r"(?: please)?[!.,? ]*",
+        lower,
+    ):
+        message = (
+            "Okay, I've cancelled that. Nothing will run."
+            if chat.pending_action != "none"
+            else "Okay. Nothing is running."
+        )
+        return response(
+            message + " Let me know when you'd like to compare something.",
+            chat.draft,
+            suggestions=RESULT_SUGGESTIONS if has_result else START_SUGGESTIONS,
+        )
+    if re.fullmatch(
+        r"(?:ok|okay|k|cool|great|nice|perfect|awesome|got it|sounds good|alright|all right)"
+        r"[!.,? ]*",
+        lower,
+    ):
+        if chat.pending_action == "prepare":
+            message = "Okay. The request stays prepared; say “run it” when you're ready."
+            suggestions = ["Run it"]
+        elif chat.pending_action == "run":
+            message = "Okay. Reply with the remaining details whenever you're ready."
+            suggestions = []
+        else:
+            message = "Great. Anything else you'd like to know?"
+            suggestions = RESULT_SUGGESTIONS if has_result else START_SUGGESTIONS
+        return response(message, chat.draft, pending=chat.pending_action, suggestions=suggestions)
+    return None
 
 
 def evidence_answer(result):
@@ -300,7 +696,7 @@ def evidence_answer(result):
     )
     lines = [
         f"Evidence for saved request {result['request_id']}.",
-        f"Requested: {request['date']} at {request['time']} ({request['timezone']}).",
+        f"Requested: {request['date']} at {request['time'][:5]} ({request['timezone']}).",
         label,
     ]
     for row in result["measurements"]:
@@ -323,7 +719,7 @@ def evidence_answer(result):
 
 
 async def reply(chat, store):
-    lower = chat.message.lower().strip()
+    lower = normalize(chat.message)
     prepare = bool(
         re.search(
             "\\b(?:do not|don['’]?t|never)\\s+(?:run|compare|start|execute)|\\b("
@@ -335,7 +731,7 @@ async def reply(chat, store):
         re.search(
             "\\bcompare\\b|\\b(?:run|start|execute)\\s+(?:it|that|this|the\\s+(?:c"
             "omparison|workflow|demo)|a\\s+comparison)|^(?:go ahead|do "
-            "it|run|yes)[.! ]*$|\\b(?:create|prepare|make)\\s+(?:a |the "
+            "it|run|yes|yes please|sure)[.! ]*$|\\b(?:create|prepare|make)\\s+(?:a |the "
             ")?(?:briefing|report)\\b",
             lower,
         )
@@ -364,6 +760,9 @@ async def reply(chat, store):
             lower,
         )
     )
+    chatter = small_talk(lower, chat)
+    if chatter:
+        return chatter
     if evidence_requested and not evidence_definition and not explicit_run and not external_action:
         if not chat.briefing_id:
             return response(
@@ -371,9 +770,15 @@ async def reply(chat, store):
                 "briefing, then ask for its evidence. I will show its actual source records.",
                 chat.draft,
                 pending=chat.pending_action,
+                suggestions=START_SUGGESTIONS,
             )
         saved = store.get(chat.briefing_id)
-        answer = response(evidence_answer(saved), chat.draft, pending=chat.pending_action)
+        answer = response(
+            evidence_answer(saved),
+            chat.draft,
+            pending=chat.pending_action,
+            suggestions=["Which is highest?", "What's the average?"],
+        )
         answer["view"] = "evidence"
         return answer
     if re.search(r"\b(?:approve|reject|send|email|delete|deploy)\b", lower) and not re.search(
@@ -383,7 +788,7 @@ async def reply(chat, store):
             "I can run temperature comparisons and explain their evidence. "
             "Client messages remain drafts; approval uses the separate "
             "reviewer control and key. There is no email-sending service "
-            "connected.",
+            "connected. Open Client briefing to edit the draft or record a review.",
             chat.draft,
         )
     definitions = {
@@ -415,24 +820,35 @@ async def reply(chat, store):
             "saved reports are real."
         ),
     }
-    if re.search(r"\b(?:what (?:does|is|are)|explain|meaning|mean)\b", lower) and not explicit_run:
+    asks_meaning = bool(re.search(r"\b(?:mean|meaning|define|definition)\b", lower))
+    if (
+        re.search(r"\b(?:what (?:does|is|are)|explain|meaning|mean|define)\b", lower)
+        and not explicit_run
+    ):
         for term, explanation in definitions.items():
+            # With a result open, "what is the spread?" wants the number, not the definition.
+            if term == "spread" and chat.briefing_id and not asks_meaning:
+                continue
             if re.search(rf"\b{term}\b", lower):
-                return response(explanation, chat.draft)
+                return response(explanation, chat.draft, pending=chat.pending_action)
     if re.search(r"\bwhat does\b.+\bmean\b", lower) and not explicit_run:
         return response(
             "I do not have an explanation for that term in guided mode. "
             "I can explain spread, evidence, mock data, n8n and guided mode, "
             "or answer highest, lowest, average and ranking questions about the saved result.",
             chat.draft,
+            pending=chat.pending_action,
         )
     if re.search(r"\b(?:what can|how (?:does|do i|to)|help)\b", lower) and not explicit_run:
         return response(
-            "Type a request such as “Compare all demo sites on 2026-07-15 at "
+            "Type a request such as “Compare all demo sites on July 15, 2026 at "
             "3:37pm Phoenix time.” I run it directly once the details are "
             "complete. Then ask “Which is highest?”, “Which is lowest?”, "
-            "“What is the average?” or “What does spread mean?” " + DEMO_COVERAGE_MESSAGE,
+            "“What is the average?”, “How hot was Tempe?” or “Show the evidence”. "
+            + DEMO_COVERAGE_MESSAGE,
             chat.draft,
+            pending=chat.pending_action,
+            suggestions=START_SUGGESTIONS[:1],
         )
     if re.search(r"\b(?:safe|safety)\b", lower) and not explicit_run:
         return response(
@@ -440,6 +856,7 @@ async def reply(chat, store):
             " I can compare the returned temperatures and show their evidence"
             " and limitations.",
             chat.draft,
+            pending=chat.pending_action,
         )
     if len(set(re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", lower))) > 1:
         return response(
@@ -466,34 +883,17 @@ async def reply(chat, store):
     result_question = bool(
         re.search(
             r"\b(?:highest|hottest|hotter|warmest|warmer|maximum|max|lowest|coldest|colder|"
-            r"coolest|cooler|minimum|min|average|mean|why|explain|result|ranking|rank|temperatures)\b",
+            r"coolest|cooler|minimum|min|average|mean|why|explain|result|ranking|rank|"
+            r"temperatures?|temps?|readings?|hot|cold|warm|cool|spread|difference|range|"
+            r"fahrenheit|°f)\b",
             lower,
         )
     )
     if chat.briefing_id and result_question and not changed and not explicit_run and not prepare:
-        saved = store.get(chat.briefing_id)
-        comparison = saved["comparison"]
-        if re.search(r"\b(?:average|mean)\b", lower):
-            ranking = comparison["ranking"]
-            average = sum(row["temperature_c"] for row in ranking) / len(ranking)
-            message = f"The average of the {len(ranking)} returned readings is {average:.1f} °C."
-        elif re.search(r"\b(?:ranking|rank)\b", lower):
-            message = (
-                "From coolest to warmest: "
-                + "; ".join(
-                    f"{row['name']}: {row['temperature_c']:.1f} °C" for row in comparison["ranking"]
-                )
-                + "."
-            )
-        else:
-            message = narrative(comparison, question_focus(chat.message))
-        when = saved["request"]
         return response(
-            message
-            + f" Spread: {comparison['spread_c']:.1f} °C. "
-            + f"This saved result is for {when['date']} at {when['time']} {when['timezone']}. "
-            + "Readings are fictional; inspect Evidence for source IDs.",
+            saved_answer(lower, store.get(chat.briefing_id)),
             chat.draft,
+            pending=chat.pending_action,
         )
     wants_run = not prepare and (
         explicit_run
@@ -507,6 +907,51 @@ async def reply(chat, store):
         pending = "prepare"
     else:
         pending = "run" if wants_run else chat.pending_action
+    if not (changed or wants_run or prepare or pending != "none"):
+        if chat.briefing_id:
+            message = (
+                "I'm not sure how to answer that from this briefing. I can give the highest "
+                "or lowest reading, the average, the spread, the ranking or one site's "
+                "reading, or show the evidence. To compare another moment, say something "
+                "like “Same sites at 9am”."
+            )
+            suggestions = RESULT_SUGGESTIONS
+        else:
+            message = (
+                "I'm not sure what you mean. I compare temperatures at three demo sites "
+                "around Phoenix. Try “Compare all demo sites on July 15, 2026 at 3pm "
+                "Phoenix time”, or select Run the demo."
+            )
+            suggestions = START_SUGGESTIONS
+        return response(message, draft, suggestions=suggestions)
+    invalid_clock = next(
+        (
+            f"{hour}:{minute}"
+            for hour, minute in re.findall(r"\b(\d{1,2}):(\d{2})\b", lower)
+            if int(hour) > 23 or int(minute) > 59
+        ),
+        None,
+    )
+    if invalid_clock:
+        return response(
+            f"{invalid_clock} is not a valid time. Use a time between 00:00 and 23:59, "
+            "or something like 3pm.",
+            draft,
+            action="clarify",
+            pending=pending,
+            suggestions=["9am", "noon", "3pm"],
+        )
+    _numeric, date_options = numeric_date(chat.message)
+    if date_options and draft.date == chat.draft.date:
+        readable = [readable_date(option) for option in date_options]
+        return response(
+            f"Did you mean {readable[0]} or {readable[1]}? Dates written with slashes can "
+            "be read either way.",
+            draft,
+            action="clarify",
+            pending=pending,
+            suggestions=readable,
+        )
     ai_message = ""
     if assistant_mode() == "ai":
         answer = await model_intake(chat.message, draft)
@@ -515,51 +960,57 @@ async def reply(chat, store):
             draft.question = answer.question[:1000]
         if answer.client_name:
             draft.client_name = answer.client_name[:120]
-    missing, errors = readiness(draft)
-    if errors:
-        return response(
-            "Please check the request: " + "; ".join(errors),
-            draft,
-            action="clarify",
-            pending=pending,
-        )
-    if missing:
-        message = (
-            "I still need "
-            + ", ".join(missing)
-            + ". Reply with those details here; no form selection is needed. "
-        )
-        if not draft.locations:
-            message += "Use the exact site names or say 'all demo sites'. "
-        if pending == "run":
-            message += "I will run the comparison when those details are complete."
-        return response(ai_message + message, draft, action="clarify", pending=pending)
-    sites = ", ".join(site.name for site in draft.locations)
-    if pending in {"run", "prepare"} and draft.question == chat.draft.question:
+    sites = natural_join(site.name for site in draft.locations)
+    if (
+        pending in {"run", "prepare"}
+        and (draft.question == chat.draft.question or len(draft.question) < 10)
+        and len(draft.locations) >= 2
+        and draft.date
+        and draft.time
+        and draft.timezone
+    ):
         focus = question_focus(draft.question)
         statistic = "highest and lowest" if focus == "both" else focus
         draft.question = (
             f"Compare {sites} on {draft.date} at {draft.time} ({draft.timezone}); "
             f"report the {statistic} temperature."
         )
+    missing, errors = readiness(draft)
+    if errors:
+        return response(
+            ai_message + friendly_errors(errors, draft),
+            draft,
+            action="clarify",
+            pending=pending,
+        )
+    if missing:
+        message, suggestions = missing_message(missing, draft, lower, pending)
+        return response(
+            ai_message + message,
+            draft,
+            action="clarify",
+            pending=pending,
+            suggestions=suggestions,
+        )
+    when = f"{readable_date(draft.date)} at {draft.time[:5]} ({draft.timezone})"
     if pending == "run":
         return response(
-            f"Running the comparison for {sites} on {draft.date} at {draft.time} "
-            f"({draft.timezone}). I will include the highest and lowest readings.",
+            f"Running the comparison for {sites} on {when}. "
+            "I'll post the highest and lowest readings here when it finishes.",
             draft,
             action="run",
         )
     if pending == "prepare":
         return response(
-            f"Prepared {sites} for {draft.date} at {draft.time} ({draft.timezone}). "
-            "I have not started a run. Say 'run it' when ready.",
+            f"Prepared {sites} for {when}. I have not started a run. Say “run it” when ready.",
             draft,
             action="prepare",
             pending="prepare",
+            suggestions=["Run it"],
         )
     return response(
-        "I can run a comparison from your message or answer questions "
-        "about the saved result. Say 'run it', ask for the highest or "
-        "lowest reading, or give a new date/time.",
+        f"Your request is ready: {sites} on {when}. Say “run it” to start, or tell me "
+        "what to change.",
         draft,
+        suggestions=["Run it"],
     )

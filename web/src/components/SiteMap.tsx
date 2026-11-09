@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { Layers, MapPin } from "lucide-react";
 import type { Measurement, Site } from "../types";
+import { siteLetter } from "../analysis";
 
 type Props = {
   sites: Site[];
@@ -57,7 +58,7 @@ export function SiteMap({
         (item) => item.name === site.name,
       )?.temperature_c;
       const isLowest = lowest.includes(site.name);
-      const letter = String.fromCharCode(65 + index);
+      const letter = siteLetter(site.name, index);
       const icon = L.divIcon({
         className: "site-map-pin",
         html: `<span class="map-dot ${isLowest ? "lowest" : ""} ${selected === site.name ? "selected" : ""}">${letter}</span>${value != null ? `<span class="map-value">${value.toFixed(1)}°</span>` : ""}`,

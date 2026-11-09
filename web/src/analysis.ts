@@ -37,3 +37,13 @@ export function comparisonSummary(briefing: Briefing) {
     ` Spread: ${briefing.comparison.spread_c.toFixed(1)} °C.`
   );
 }
+
+// One letter per site everywhere (form, map, cards), following the catalog order.
+let siteOrder: string[] = [];
+export function setSiteOrder(names: string[]) {
+  siteOrder = names;
+}
+export function siteLetter(name: string, index: number) {
+  const position = siteOrder.indexOf(name);
+  return String.fromCharCode(65 + (position >= 0 ? position : index));
+}

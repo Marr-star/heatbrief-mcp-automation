@@ -98,6 +98,7 @@ export type ChatMessage = {
   id: string;
   role: "assistant" | "user";
   content: string;
+  suggestions?: string[];
 };
 export type ChatReply = {
   message: string;
@@ -110,4 +111,5 @@ export type ChatReply = {
   ready: boolean;
   missing_fields: string[];
   validation_errors: string[];
+  suggestions?: string[];
 };

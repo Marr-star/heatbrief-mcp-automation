@@ -12,7 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { Briefing, Measurement, Run } from "../types";
-import { highestReading, questionFocus } from "../analysis";
+import { highestReading, questionFocus, siteLetter } from "../analysis";
 
 export function displayDate(date: string) {
   return new Intl.DateTimeFormat("en", {
@@ -56,7 +56,7 @@ export function ComparisonCards({
           >
             <div className="temperature-card-top">
               <span className="site-letter">
-                {String.fromCharCode(65 + index)}
+                {siteLetter(item.name, index)}
               </span>
               {lowest ? (
                 <span className="lowest-label">
@@ -274,8 +274,8 @@ export function ClientBriefing({
           <h3>Location temperature briefing</h3>
           <p className="report-question">{briefing.request.question}</p>
           <div className="report-time">
-            {displayDate(briefing.request.date)} · {briefing.request.time} ·{" "}
-            {briefing.request.timezone}
+            {displayDate(briefing.request.date)} ·{" "}
+            {briefing.request.time.slice(0, 5)} · {briefing.request.timezone}
           </div>
           <div className="report-stat">
             <span>Lowest temperature</span>

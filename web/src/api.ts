@@ -11,25 +11,54 @@ export class ApiError extends Error {
     super(message);
   }
 }
+// The workspace keeps sessions in memory, so a server restart invalidates them.
+// Quietly start a fresh session instead of asking the person to reload the page.
+async function renewSession() {
+  try {
+    const response = await fetch("/api/bootstrap", {
+      credentials: "same-origin",
+    });
+    if (!response.ok) return false;
+    const data = (await response.json()) as { csrf?: string };
+    if (!data.csrf) return false;
+    csrf = data.csrf;
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function send(path: string, init: RequestInit) {
+  try {
+    return await fetch(path, { ...init, credentials: "same-origin" });
+  } catch {
+    throw new ApiError(
+      "Can't reach the HeatBrief workspace. Check that it is still running, then try again.",
+      0,
+    );
+  }
+}
 export async function api<T>(
   path: string,
   options: RequestInit = {},
+  retried = false,
 ): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.body) headers.set("Content-Type", "application/json");
   if (options.method && options.method !== "GET")
     headers.set("X-HeatBrief-CSRF", csrf);
-  const response = await fetch("/api" + path, {
-    ...options,
-    headers,
-    credentials: "same-origin",
-  });
+  const response = await send("/api" + path, { ...options, headers });
   if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({
-        message: "The workspace could not complete this request.",
-      }));
+    const error = await response.json().catch(() => ({
+      message: "The workspace could not complete this request.",
+    }));
+    if (
+      !retried &&
+      response.status === 401 &&
+      error.error === "session_expired" &&
+      (await renewSession())
+    ) {
+      return api<T>(path, options, true);
+    }
     throw new ApiError(
       error.message || "Request failed",
       response.status,
@@ -51,16 +80,16 @@ export function downloadText(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export async function downloadPdf(id: string) {
-  const response = await fetch(
-    "/api/briefings/" + encodeURIComponent(id) + "/pdf",
-    { credentials: "same-origin" },
-  );
+  const url = "/api/briefings/" + encodeURIComponent(id) + "/pdf";
+  let response = await send(url, {});
+  if (response.status === 401 && (await renewSession()))
+    response = await send(url, {});
   if (!response.ok)
     throw new Error("The PDF could not be generated. Try again.");
-  const url = URL.createObjectURL(await response.blob());
+  const blobUrl = URL.createObjectURL(await response.blob());
   const anchor = document.createElement("a");
-  anchor.href = url;
+  anchor.href = blobUrl;
   anchor.download = `heatbrief-${id}.pdf`;
   anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 }
