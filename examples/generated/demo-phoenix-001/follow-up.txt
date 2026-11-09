@@ -1,0 +1,11 @@
+Status: DRAFT — HUMAN REVIEW REQUIRED
+Subject: [MOCK DATA] Temperature comparison briefing
+
+Hello Acme Demo Events (fictional),
+
+[MOCK DATA] Among these locations, Tempe Riverside has the lowest temperature at 34.1 °C.
+Requested time: 2025-09-20T14:00:00-07:00 (America/Phoenix).
+
+Please review the attached briefing for sources and limitations. Temperature alone does not establish outdoor work or event safety.
+
+Prepared for review; no message has been sent.

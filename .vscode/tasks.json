@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "HeatBrief: compare demo locations",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "heatbrief", "compare", "examples/request.json"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": []
+    },
+    {
+      "label": "HeatBrief: start local API",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "uvicorn", "heatbrief.api:app", "--host", "127.0.0.1", "--port", "8000", "--env-file", ".env"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": []
+    },
+    {
+      "label": "HeatBrief: run tests",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "pytest", "-q"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "group": {"kind": "test", "isDefault": true},
+      "problemMatcher": []
+    }
+  ]
+}

@@ -8,4 +8,10 @@ Each completed phase gets a separate commit and push to GitHub.
 4. **Reliability:** failure matrix, bounded retries, regression tests, CI, setup and troubleshooting.
 5. **Demo + handoff:** sample artifacts, example prompts, demo walkthrough and integration feedback.
 
-Live FortyGuard access, real schema verification, n8n runtime execution and demo recording must be reported honestly; mock tests do not count as live observations.
+## Delivery status
+
+- Phases 1–4 implemented, locally verified, committed and pushed separately. Phase 4 CI passed on Windows and Ubuntu.
+- Phase 5 includes sample artifacts, preview, prompts, setup guides and a two-minute scripted terminal recording of actual CLI requests.
+- Still unverified: live FortyGuard access and schema, coding-assistant UI use, and n8n runtime import/execution. The included recording demonstrates the tested mock CLI workflow.
+
+Mock tests do not count as live provider observations. Native n8n and assistant UI demos can be recorded after those integrations are configured.

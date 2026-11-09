@@ -4,6 +4,8 @@ Local environment: Windows, Python 3.12.12. Mock fixtures only. Commands: `uv ru
 
 Local result on 2026-11-09: **35 tests passed**, lint passed, formatting passed, workflow graph/JavaScript checks passed. A real local HTTP smoke run also passed.
 
+The two-minute scripted terminal recording contains actual successful MCP/CLI commands, a saved-result replay and a missing-timezone failure. Its embedded offline player's playback JavaScript passed a local harness check; visual browser playback was not tested.
+
 | Scenario | Observed result | Evidence type |
 |---|---|---|
 | Complete request | Tempe Riverside ranks lowest at 34.1 °C; spread 2.6 °C | Real MCP stdio + API tests |
@@ -29,5 +31,5 @@ Local result on 2026-11-09: **35 tests passed**, lint passed, formatting passed,
 - No successful FortyGuard call, coverage check, API-key authentication, access-denied response or provider rate-limit observation is claimed.
 - The n8n export has not yet been imported or executed in an n8n runtime.
 - No coding-assistant MCP UI session has been tested. The same MCP server is exercised with the official Python SDK.
-- CI is configured for Windows and Ubuntu. Record actual GitHub run results after the first push; local success alone does not establish CI success.
+- The first GitHub CI run passed on Windows and Ubuntu: [run 42574927443](https://github.com/Marr-star/heatbrief-mcp-automation/actions/runs/42574927443), commit `4b54ced`. Later commits trigger their own checks.
 - There is no outbound email transport. Human approval records a decision for manual sending.

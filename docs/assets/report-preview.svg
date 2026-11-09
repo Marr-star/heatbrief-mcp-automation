@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="670" viewBox="0 0 1120 670" role="img" aria-labelledby="title description">
+<title id="title">HeatBrief sample temperature briefing</title>
+<desc id="description">Mock data. Tempe Riverside has the lowest temperature at 34.1 Celsius. Three fictional readings, spread 2.6 degrees.</desc>
+<rect width="1120" height="670" rx="20" fill="#102334"/>
+<g font-family="Segoe UI, Arial, sans-serif">
+<text x="40" y="45" fill="#efac72" font-size="15" letter-spacing="3">HEATBRIEF / CLIENT EVIDENCE</text>
+<rect x="877" y="22" width="201" height="37" rx="18" fill="#543a28"/>
+<text x="899" y="46" fill="#ffd1a8" font-size="16" font-weight="700">MOCK DATA</text>
+<text x="40" y="96" fill="#f4f7fa" font-size="31" font-weight="700">Three locations. One traceable comparison.</text>
+<text x="40" y="125" fill="#a6b8c9" font-size="16">2025-09-20 · 14:00 America/Phoenix · Fictional client demonstration</text>
+<rect x="40" y="154" width="1040" height="104" rx="12" fill="#1c3345"/>
+<text x="62" y="184" fill="#a6b8c9" font-size="14">LOWEST TEMPERATURE</text>
+<text x="62" y="226" fill="#78d4b8" font-size="32" font-weight="700">34.1 °C</text>
+<text x="226" y="222" fill="#f4f7fa" font-size="21">Tempe Riverside</text>
+<text x="635" y="184" fill="#a6b8c9" font-size="14">SPREAD</text>
+<text x="635" y="226" fill="#f4f7fa" font-size="29">2.6 °C</text>
+<text x="880" y="184" fill="#a6b8c9" font-size="14">COVERAGE</text>
+<text x="880" y="226" fill="#f4f7fa" font-size="29">3 / 3</text>
+<text x="48" y="292" fill="#a6b8c9" font-size="13">LOCATION / EVIDENCE ID</text>
+<text x="455" y="292" fill="#a6b8c9" font-size="13">TEMPERATURE</text>
+<text x="640" y="292" fill="#a6b8c9" font-size="13">COORDINATES</text>
+<text x="860" y="292" fill="#a6b8c9" font-size="13">0–40 °C SCALE</text>
+<g>
+<text x="48" y="330" fill="#dce6ee" font-size="19">Phoenix Civic Plaza</text>
+<text x="48" y="354" fill="#a6b8c9" font-size="12">mock-20250920-33.4484--112.074</text>
+<text x="455" y="330" fill="#dce6ee" font-size="25" font-weight="700">35.2 °C</text>
+<text x="640" y="330" fill="#dce6ee" font-size="16">33.4484, -112.074</text>
+<rect x="860" y="313" width="195" height="12" rx="6" fill="#263d50"/>
+<rect x="860" y="313" width="171.6" height="12" rx="6" fill="#dce6ee"/>
+</g><g>
+<text x="48" y="406" fill="#78d4b8" font-size="19">Tempe Riverside</text>
+<text x="48" y="430" fill="#a6b8c9" font-size="12">mock-20250920-33.4255--111.94</text>
+<text x="455" y="406" fill="#78d4b8" font-size="25" font-weight="700">34.1 °C</text>
+<text x="640" y="406" fill="#dce6ee" font-size="16">33.4255, -111.94</text>
+<rect x="860" y="389" width="195" height="12" rx="6" fill="#263d50"/>
+<rect x="860" y="389" width="166.2" height="12" rx="6" fill="#78d4b8"/>
+</g><g>
+<text x="48" y="482" fill="#dce6ee" font-size="19">Scottsdale Courtyard</text>
+<text x="48" y="506" fill="#a6b8c9" font-size="12">mock-20250920-33.4942--111.9261</text>
+<text x="455" y="482" fill="#dce6ee" font-size="25" font-weight="700">36.7 °C</text>
+<text x="640" y="482" fill="#dce6ee" font-size="16">33.4942, -111.9261</text>
+<rect x="860" y="465" width="195" height="12" rx="6" fill="#263d50"/>
+<rect x="860" y="465" width="178.9" height="12" rx="6" fill="#dce6ee"/>
+</g>
+<path d="M40 544 H1080" stroke="#365064"/>
+<text x="40" y="574" fill="#dce6ee" font-size="15">Observed at: 2025-09-20T14:00:00-07:00 · Source: HeatBrief fictional fixture</text>
+<text x="40" y="605" fill="#f3bc8d" font-size="15">All values are fictional. Temperature alone does not establish outdoor work or event safety.</text>
+<text x="40" y="638" fill="#a6b8c9" font-size="14">Draft pending human review · Live FortyGuard integration is unverified · No follow-up has been sent</text>
+</g></svg>

@@ -1,0 +1,165 @@
+HEATBRIEF | AI temperature analyst + client briefing
+
+SCRIPTED TERMINAL RECORDING — actual executed commands
+MOCK DATA: fictional temperatures, no FortyGuard calls.
+Success -> evidence -> duplicate replay -> graceful failure -> review.
+
+1 / MCP discovery + point measurement
+
+
+$ python -m heatbrief.cli ping
+
+
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+{
+  "tools": [
+    "env_params"
+  ],
+  "measurement": {
+    "latitude": 33.4484,
+    "longitude": -112.074,
+    "temperature": 35.2,
+    "unit": "C",
+    "observed_at": "2025-09-20T14:00:00-07:00",
+    "source": "HeatBrief fictional fixture \u2014 Mock data",
+    "source_id": "mock-20250920-33.4484--112.074",
+    "mock": true
+  }
+}
+
+[exit 0]
+
+2 / Compare and save the briefing
+
+
+$ python -m heatbrief.cli compare examples/request.json --out reports/demo-recording
+
+
+Processing request of type CallToolRequest
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+{
+  "status": "draft_pending_review",
+  "replayed": false,
+  "comparison": {
+    "mock": true,
+    "incomplete": false,
+    "lowest_c": 34.1,
+    "lowest_locations": [
+      "Tempe Riverside"
+    ],
+    "spread_c": 2.6,
+    "ranking": [
+      {
+        "name": "Tempe Riverside",
+        "temperature_c": 34.1
+      },
+      {
+        "name": "Phoenix Civic Plaza",
+        "temperature_c": 35.2
+      },
+      {
+        "name": "Scottsdale Courtyard",
+        "temperature_c": 36.7
+      }
+    ]
+  },
+  "output": "reports\\demo-recording\\demo-phoenix-001"
+}
+
+[exit 0]
+
+3 / Evidence-backed report
+
+
+# HeatBrief | Temperature comparison
+
+**Mock data — fictional demonstration**
+
+Request: `demo-phoenix-001` · Client: Acme Demo Events \(fictional\)
+Requested time: 2025-09-20T14:00:00-07:00 (America/Phoenix)
+
+Business question: Which of these three locations has the lowest temperature for our site visit?
+
+## Finding
+
+Among these locations, Tempe Riverside has the lowest temperature at 34\.1 °C\.
+
+Temperature spread among available readings: 2.6 °C.
+Coverage: 3/3 locations.
+
+## Evidence
+
+| Location | Coordinates | Temperature | Observed at | Source / evidence ID |
+|---|---|---|---|---|
+| Phoenix Civic Plaza | 33.4484, -112.074 | 35.2 °C | 2025\-09\-20T14:00:00\-07:00 | HeatBrief fictional fixture — Mock data / mock\-20250920\-33\.4484\-\-112\.074 |
+| Tempe Riverside | 33.4255, -111.94 | 34.1 °C | 2025\-09\-20T14:00:00\-07:00 | HeatBrief fictional fixture — Mock data / mock\-20250920\-33\.4255\-\-111\.94 |
+| Scottsdale Courtyard | 33.4942, -111.9261 | 36.7 °C | 2025\-09\-20T14:00:00\-07:00 | HeatBrief fictional fixture — Mock data / mock\-20250920\-33\.4942\-\-111\.9261 |
+
+## Limitations
+
+- Mock data: all readings are fictional; live FortyGuard is unverified\.
+- Only temperature is compared; this does not establish safety for outdoor work or events\.
+- Readings apply only to the stated coordinates and timestamp\.
+- Rankings use Celsius rounded to 0\.001 degrees; displayed values use one decimal\.
+
+4 / Repeat the request: replay the saved result
+
+
+$ python -m heatbrief.cli compare examples/request.json --out reports/demo-recording
+
+
+{
+  "status": "draft_pending_review",
+  "replayed": true,
+  "comparison": {
+    "mock": true,
+    "incomplete": false,
+    "lowest_c": 34.1,
+    "lowest_locations": [
+      "Tempe Riverside"
+    ],
+    "spread_c": 2.6,
+    "ranking": [
+      {
+        "name": "Tempe Riverside",
+        "temperature_c": 34.1
+      },
+      {
+        "name": "Phoenix Civic Plaza",
+        "temperature_c": 35.2
+      },
+      {
+        "name": "Scottsdale Courtyard",
+        "temperature_c": 36.7
+      }
+    ]
+  },
+  "output": "reports\\demo-recording\\demo-phoenix-001"
+}
+
+[exit 0]
+
+5 / Graceful failure: timezone is missing
+
+
+$ python -m heatbrief.cli compare examples/missing-timezone.json
+
+
+{"error": "invalid_request", "message": "1 validation error for BriefingRequest\ntimezone\n  Field required [type=missing, input_value={'request_id': 'demo-miss...longitude': -111.9261}]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing"}
+
+[exit 2]
+
+6 / Client handoff
+
+
+Report + unsent follow-up are saved once per request ID.
+Status: draft_pending_review. Human review uses a separate API token.
+n8n workflow: workflows/client-briefing.json (runtime execution unverified).
+Live FortyGuard integration: gated until access and schema are verified.
+Temperature alone does not establish outdoor safety.
+
+
+Demo complete. No follow-up has been sent.

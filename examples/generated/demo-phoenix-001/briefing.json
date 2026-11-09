@@ -1,0 +1,99 @@
+{
+  "request_id": "demo-phoenix-001",
+  "status": "draft_pending_review",
+  "replayed": true,
+  "request": {
+    "request_id": "demo-phoenix-001",
+    "question": "Which of these three locations has the lowest temperature for our site visit?",
+    "date": "2025-09-20",
+    "time": "14:00:00",
+    "timezone": "America/Phoenix",
+    "locations": [
+      {
+        "name": "Phoenix Civic Plaza",
+        "latitude": 33.4484,
+        "longitude": -112.074
+      },
+      {
+        "name": "Tempe Riverside",
+        "latitude": 33.4255,
+        "longitude": -111.94
+      },
+      {
+        "name": "Scottsdale Courtyard",
+        "latitude": 33.4942,
+        "longitude": -111.9261
+      }
+    ],
+    "client_name": "Acme Demo Events (fictional)"
+  },
+  "comparison": {
+    "mock": true,
+    "incomplete": false,
+    "lowest_c": 34.1,
+    "lowest_locations": [
+      "Tempe Riverside"
+    ],
+    "spread_c": 2.6,
+    "ranking": [
+      {
+        "name": "Tempe Riverside",
+        "temperature_c": 34.1
+      },
+      {
+        "name": "Phoenix Civic Plaza",
+        "temperature_c": 35.2
+      },
+      {
+        "name": "Scottsdale Courtyard",
+        "temperature_c": 36.7
+      }
+    ]
+  },
+  "measurements": [
+    {
+      "name": "Phoenix Civic Plaza",
+      "latitude": 33.4484,
+      "longitude": -112.074,
+      "temperature": 35.2,
+      "unit": "C",
+      "observed_at": "2025-09-20T14:00:00-07:00",
+      "source": "HeatBrief fictional fixture \u2014 Mock data",
+      "source_id": "mock-20250920-33.4484--112.074",
+      "mock": true,
+      "temperature_c": 35.2
+    },
+    {
+      "name": "Tempe Riverside",
+      "latitude": 33.4255,
+      "longitude": -111.94,
+      "temperature": 34.1,
+      "unit": "C",
+      "observed_at": "2025-09-20T14:00:00-07:00",
+      "source": "HeatBrief fictional fixture \u2014 Mock data",
+      "source_id": "mock-20250920-33.4255--111.94",
+      "mock": true,
+      "temperature_c": 34.1
+    },
+    {
+      "name": "Scottsdale Courtyard",
+      "latitude": 33.4942,
+      "longitude": -111.9261,
+      "temperature": 36.7,
+      "unit": "C",
+      "observed_at": "2025-09-20T14:00:00-07:00",
+      "source": "HeatBrief fictional fixture \u2014 Mock data",
+      "source_id": "mock-20250920-33.4942--111.9261",
+      "mock": true,
+      "temperature_c": 36.7
+    }
+  ],
+  "limitations": [
+    "Mock data: all readings are fictional; live FortyGuard is unverified.",
+    "Only temperature is compared; this does not establish safety for outdoor work or events.",
+    "Readings apply only to the stated coordinates and timestamp.",
+    "Rankings use Celsius rounded to 0.001 degrees; displayed values use one decimal."
+  ],
+  "report_markdown": "# HeatBrief | Temperature comparison\n\n**Mock data \u2014 fictional demonstration**\n\nRequest: `demo-phoenix-001` \u00b7 Client: Acme Demo Events \\(fictional\\)\nRequested time: 2025-09-20T14:00:00-07:00 (America/Phoenix)\n\nBusiness question: Which of these three locations has the lowest temperature for our site visit?\n\n## Finding\n\nAmong these locations, Tempe Riverside has the lowest temperature at 34\\.1 \u00b0C\\.\n\nTemperature spread among available readings: 2.6 \u00b0C.\nCoverage: 3/3 locations.\n\n## Evidence\n\n| Location | Coordinates | Temperature | Observed at | Source / evidence ID |\n|---|---|---|---|---|\n| Phoenix Civic Plaza | 33.4484, -112.074 | 35.2 \u00b0C | 2025\\-09\\-20T14:00:00\\-07:00 | HeatBrief fictional fixture \u2014 Mock data / mock\\-20250920\\-33\\.4484\\-\\-112\\.074 |\n| Tempe Riverside | 33.4255, -111.94 | 34.1 \u00b0C | 2025\\-09\\-20T14:00:00\\-07:00 | HeatBrief fictional fixture \u2014 Mock data / mock\\-20250920\\-33\\.4255\\-\\-111\\.94 |\n| Scottsdale Courtyard | 33.4942, -111.9261 | 36.7 \u00b0C | 2025\\-09\\-20T14:00:00\\-07:00 | HeatBrief fictional fixture \u2014 Mock data / mock\\-20250920\\-33\\.4942\\-\\-111\\.9261 |\n\n## Limitations\n\n- Mock data: all readings are fictional; live FortyGuard is unverified\\.\n- Only temperature is compared; this does not establish safety for outdoor work or events\\.\n- Readings apply only to the stated coordinates and timestamp\\.\n- Rankings use Celsius rounded to 0\\.001 degrees; displayed values use one decimal\\.\n",
+  "follow_up_draft": "Status: DRAFT \u2014 HUMAN REVIEW REQUIRED\nSubject: [MOCK DATA] Temperature comparison briefing\n\nHello Acme Demo Events (fictional),\n\n[MOCK DATA] Among these locations, Tempe Riverside has the lowest temperature at 34.1 \u00b0C.\nRequested time: 2025-09-20T14:00:00-07:00 (America/Phoenix).\n\nPlease review the attached briefing for sources and limitations. Temperature alone does not establish outdoor work or event safety.\n\nPrepared for review; no message has been sent.\n"
+}
