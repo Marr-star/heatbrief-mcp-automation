@@ -72,3 +72,31 @@ class Store:
         if not row:
             raise HeatBriefError("not_found", "Completed briefing not found", 404)
         return json.loads(row[0])
+
+    def review(self, request_id, review):
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT result FROM briefings WHERE request_id=? AND result IS NOT NULL",
+                (request_id,),
+            ).fetchone()
+            if not row:
+                raise HeatBriefError("not_found", "Completed briefing not found", 404)
+            result = json.loads(row[0])
+            previous = result.get("review")
+            if previous:
+                if (previous["decision"], previous["reviewer"]) == (
+                    review["decision"],
+                    review["reviewer"],
+                ):
+                    return result
+                raise HeatBriefError("review_conflict", "Briefing has already been reviewed", 409)
+            result["review"] = review
+            result["status"] = (
+                "approved_for_manual_send" if review["decision"] == "approve" else "rejected"
+            )
+            db.execute(
+                "UPDATE briefings SET result=? WHERE request_id=?",
+                (json.dumps(result, allow_nan=False), request_id),
+            )
+            return result

@@ -1,0 +1,93 @@
+{
+  "name": "HeatBrief - temperature evidence and client briefing (MOCK)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "heatbrief-webhook",
+      "name": "Receive briefing request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "heatbrief-client-briefing",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "heatbrief",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Attach a Header Auth credential: X-HeatBrief-Webhook-Key. POST examples/request.json."
+    },
+    {
+      "id": "heatbrief-api",
+      "name": "Create and save briefing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [300, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/briefings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {
+          "timeout": 70000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "notes": "Attach Header Auth: Authorization = Bearer <HEATBRIEF_API_TOKEN>. Python validates, calls mock MCP, compares, generates and saves to SQLite. Adjust URL for container networking."
+    },
+    {
+      "id": "heatbrief-review",
+      "name": "Prepare human review packet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input = $input.first().json;\nconst statusCode = input.statusCode ?? 200;\nconst body = input.body ?? input;\nif (statusCode >= 400) return [{ json: { statusCode, response: body } }];\nif (!body.request_id || !body.report_markdown || !body.follow_up_draft) throw new Error('HeatBrief response is missing briefing evidence');\nreturn [{ json: { statusCode, response: { ...body, review_required: body.status === 'draft_pending_review', human_review: 'Read the evidence, report and draft. A human may record a decision using the separate review API token. No message is sent.' } } }];"
+      },
+      "notes": "This is a review handoff. The automation has no reviewer credential and no sending node."
+    },
+    {
+      "id": "heatbrief-response",
+      "name": "Return report and unsent draft",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [900, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response }}",
+        "options": { "responseCode": "={{ $json.statusCode }}" }
+      }
+    },
+    {
+      "id": "heatbrief-note",
+      "name": "Mock mode and setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -300],
+      "parameters": {
+        "content": "## HeatBrief — MOCK DATA\nRead docs/n8n-setup.md. Configure the two Header Auth credentials before execution.\nThe HTTP bridge uses real MCP stdio locally. FortyGuard live mode is unverified.\nReports and unsent follow-ups are saved in SQLite. Human review uses a separate token.\nWorkflow runtime import/execution must be verified in your n8n instance.",
+        "height": 240,
+        "width": 950
+      }
+    }
+  ],
+  "connections": {
+    "Receive briefing request": {"main": [[{"node": "Create and save briefing", "type": "main", "index": 0}]]},
+    "Create and save briefing": {"main": [[{"node": "Prepare human review packet", "type": "main", "index": 0}]]},
+    "Prepare human review packet": {"main": [[{"node": "Return report and unsent draft", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "pinData": {},
+  "tags": []
+}
