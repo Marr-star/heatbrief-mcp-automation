@@ -52,3 +52,10 @@ test("tied maxima remain visible as multiple sites", () => {
     "Scottsdale Courtyard",
   ]);
 });
+
+test("ordinary comparative wording keeps the requested focus", () => {
+  assert.equal(questionFocus("Which one is hotter?"), "highest");
+  assert.equal(questionFocus("Which is warmer?"), "highest");
+  assert.equal(questionFocus("Which is cooler?"), "lowest");
+  assert.equal(questionFocus("Which is colder?"), "lowest");
+});

@@ -4,8 +4,10 @@ import re
 
 
 def question_focus(question):
-    high = bool(re.search(r"\b(highest|hottest|warmest|maximum|max)\b", question, re.I))
-    low = bool(re.search(r"\b(lowest|coldest|coolest|minimum|min)\b", question, re.I))
+    high = bool(
+        re.search(r"\b(highest|hottest|hotter|warmest|warmer|maximum|max)\b", question, re.I)
+    )
+    low = bool(re.search(r"\b(lowest|coldest|colder|coolest|cooler|minimum|min)\b", question, re.I))
     return "highest" if high and not low else "lowest" if low and not high else "both"
 
 

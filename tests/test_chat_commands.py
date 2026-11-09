@@ -243,3 +243,114 @@ async def test_missing_source_metadata_is_labeled_unavailable(chat_store):
     )
     assert "Evidence ID: Unavailable" in answer["message"]
     assert "Observed: Not recorded" in answer["message"]
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("Just Tempe and Scottsdale.", ["Tempe Riverside", "Scottsdale Courtyard"]),
+        ("Tempe and Scottsdale please", ["Tempe Riverside", "Scottsdale Courtyard"]),
+        ("Remove Scottsdale", ["Phoenix Civic Plaza", "Tempe Riverside"]),
+        ("Use only Civic Plaza and Riverside", ["Phoenix Civic Plaza", "Tempe Riverside"]),
+    ],
+)
+async def test_contextual_site_refinements_preserve_time_and_run(chat_store, message, expected):
+    store, saved = chat_store
+    draft = Draft.model_validate({key: saved["request"][key] for key in Draft.model_fields})
+    answer = await reply(
+        ChatInput(message=message, draft=draft, briefing_id=saved["request_id"]), store
+    )
+    assert answer["action"] == "run"
+    assert [site["name"] for site in answer["draft"]["locations"]] == expected
+    assert answer["draft"]["date"] == draft.date
+    assert answer["draft"]["time"] == draft.time
+    assert answer["draft"]["timezone"] == draft.timezone
+
+
+def test_site_aliases_do_not_change_selection_for_timezone_or_result_questions():
+    draft = Draft(
+        locations=[
+            {"name": "Tempe Riverside", "latitude": 33.4255, "longitude": -111.94},
+            {"name": "Scottsdale Courtyard", "latitude": 33.4942, "longitude": -111.9261},
+        ]
+    )
+    assert extract_explicit("Make it 5pm Phoenix time", draft).locations == draft.locations
+    assert (
+        extract_explicit("Why is Tempe Riverside the lowest?", draft).locations == draft.locations
+    )
+    expanded = extract_explicit("Add Phoenix", draft)
+    assert len(expanded.locations) == 3
+    assert len({site.name for site in expanded.locations}) == 3
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("Which one is hotter?", "Scottsdale Courtyard has the highest temperature"),
+        ("Which is warmer?", "Scottsdale Courtyard has the highest temperature"),
+        ("And which is cooler?", "Tempe Riverside has the lowest temperature"),
+        ("Which one is colder?", "Tempe Riverside has the lowest temperature"),
+    ],
+)
+async def test_comparative_followups_answer_from_saved_evidence(chat_store, message, expected):
+    store, saved = chat_store
+    draft = Draft.model_validate({key: saved["request"][key] for key in Draft.model_fields})
+    answer = await reply(
+        ChatInput(message=message, draft=draft, briefing_id=saved["request_id"]), store
+    )
+    assert answer["action"] == "answer"
+    assert expected in answer["message"]
+    assert answer["draft"]["locations"] == draft.model_dump()["locations"]
+    assert "2025-09-20" in answer["message"]
+
+
+@pytest.mark.parametrize("message", ["Actually make it 5pm", "Just Tempe and Scottsdale"])
+async def test_refined_request_description_matches_current_details(chat_store, message):
+    store, saved = chat_store
+    draft = Draft.model_validate({key: saved["request"][key] for key in Draft.model_fields})
+    draft.question = "Compare all three demo locations on September 20, 2025 at 2 pm Phoenix time"
+    answer = await reply(
+        ChatInput(message=message, draft=draft, briefing_id=saved["request_id"]), store
+    )
+    assert answer["action"] == "run"
+    request = answer["draft"]
+    assert request["date"] in request["question"]
+    assert request["time"] in request["question"]
+    assert request["timezone"] in request["question"]
+    assert "2 pm" not in request["question"]
+    assert "all three" not in request["question"]
+    for site in request["locations"]:
+        assert site["name"] in request["question"]
+
+
+async def test_prepared_time_change_is_coherent_when_run_later(chat_store):
+    store, saved = chat_store
+    draft = Draft.model_validate({key: saved["request"][key] for key in Draft.model_fields})
+    prepared = await reply(ChatInput(message="Just prepare; make it 5pm", draft=draft), store)
+    assert prepared["action"] == "prepare"
+    assert "17:00" in prepared["draft"]["question"]
+    run = await reply(
+        ChatInput(
+            message="Run it",
+            draft=Draft.model_validate(prepared["draft"]),
+            pending_action="prepare",
+        ),
+        store,
+    )
+    assert run["action"] == "run"
+    assert "17:00" in run["draft"]["question"]
+
+
+async def test_just_tell_me_is_a_question_not_a_selection_change(chat_store):
+    store, saved = chat_store
+    draft = Draft.model_validate({key: saved["request"][key] for key in Draft.model_fields})
+    answer = await reply(
+        ChatInput(
+            message="Just tell me why Tempe Riverside is the lowest",
+            draft=draft,
+            briefing_id=saved["request_id"],
+        ),
+        store,
+    )
+    assert answer["action"] == "answer"
+    assert answer["draft"]["locations"] == draft.model_dump()["locations"]

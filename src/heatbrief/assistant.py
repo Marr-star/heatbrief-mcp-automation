@@ -56,6 +56,67 @@ def assistant_mode():
     return "ai" if enabled and configured else "guided"
 
 
+SITE_ALIASES = {
+    "Phoenix Civic Plaza": ("phoenix", "civic plaza"),
+    "Tempe Riverside": ("tempe", "riverside"),
+    "Scottsdale Courtyard": ("scottsdale", "courtyard"),
+}
+
+
+def select_locations(message, draft):
+    lower = message.lower()
+    # A timezone mention is not a request to select Phoenix Civic Plaza.
+    selection_text = re.sub(r"\bphoenix time\b", "", lower)
+    all_sites = bool(
+        re.search(
+            r"\b(?:three|all|3)(?:\s+(?:three|3))?\s+(?:demo\s+)?"
+            r"(?:sites|locations|places)\b",
+            selection_text,
+        )
+    )
+    directive = bool(
+        re.search(
+            r"\b(?:compare|use|switch|add|include|remove|exclude|without|replace)\b"
+            r"|\b(?:only|just)\s+(?:use\s+|want\s+|include\s+)?(?:the\s+)?"
+            r"(?:phoenix|tempe|scottsdale|civic plaza|riverside|courtyard)\b",
+            selection_text,
+        )
+    )
+    selected = []
+    remaining = selection_text
+    for site in CATALOG:
+        names = [site["name"].lower()]
+        if draft.locations:
+            names.extend(SITE_ALIASES[site["name"]])
+        found = False
+        for name in sorted(names, key=len, reverse=True):
+            pattern = r"\b" + re.escape(name) + r"\b"
+            if re.search(pattern, selection_text):
+                found = True
+            remaining = re.sub(pattern, "", remaining)
+        if found:
+            selected.append(site)
+    remaining = re.sub(r"\b(?:and|the|demo|sites|locations|please|both)\b", "", remaining)
+    names_only = not re.search(r"\w", remaining)
+    if draft.locations and not (directive or names_only or all_sites):
+        return draft.model_dump()["locations"]
+    if all_sites:
+        selected = CATALOG
+    if not selected:
+        return draft.model_dump()["locations"]
+    if re.search(r"\b(?:remove|exclude|without)\b", selection_text):
+        removed = {site["name"] for site in selected}
+        return [site for site in draft.model_dump()["locations"] if site["name"] not in removed]
+    if re.search(r"\b(?:add|include)\b", selection_text) and not re.search(
+        r"\b(?:only|just)\b",
+        selection_text,
+    ):
+        current = draft.model_dump()["locations"]
+        existing = {site["name"] for site in current}
+        return current + [site for site in selected if site["name"] not in existing]
+    return selected
+
+
 def extract_explicit(message, draft, reference_date=None):
     data = draft.model_dump()
     lower = message.lower()
@@ -63,15 +124,7 @@ def extract_explicit(message, draft, reference_date=None):
         r"\b(compare|which|highest|lowest|hottest|coldest|visit|event)\b", lower
     ):
         data["question"] = message[:1000]
-    selected = [site for site in CATALOG if site["name"].lower() in lower]
-    if re.search(
-        "\\b(?:(?:the|these)\\s+)?(?:three|all|3)(?:\\s+(?:three|3))?\\s+(?:d"
-        "emo\\s+)?(?:sites|locations|places)\\b",
-        lower,
-    ):
-        selected = CATALOG
-    if selected:
-        data["locations"] = selected
+    data["locations"] = select_locations(message, draft)
     zone = re.search(r"\b[A-Za-z_]+/[A-Za-z_]+(?:/[A-Za-z_]+)?\b", message)
     if zone:
         data["timezone"] = zone.group()
@@ -412,9 +465,8 @@ async def reply(chat, store):
     )
     result_question = bool(
         re.search(
-            "\\b(?:highest|hottest|warmest|maximum|max|lowest|coldest|coolest|"
-            "minimum|min|average|mean|why|explain|result|ranking|rank|tempera"
-            "tures)\\b",
+            r"\b(?:highest|hottest|hotter|warmest|warmer|maximum|max|lowest|coldest|colder|"
+            r"coolest|cooler|minimum|min|average|mean|why|explain|result|ranking|rank|temperatures)\b",
             lower,
         )
     )
@@ -483,6 +535,13 @@ async def reply(chat, store):
             message += "I will run the comparison when those details are complete."
         return response(ai_message + message, draft, action="clarify", pending=pending)
     sites = ", ".join(site.name for site in draft.locations)
+    if pending in {"run", "prepare"} and draft.question == chat.draft.question:
+        focus = question_focus(draft.question)
+        statistic = "highest and lowest" if focus == "both" else focus
+        draft.question = (
+            f"Compare {sites} on {draft.date} at {draft.time} ({draft.timezone}); "
+            f"report the {statistic} temperature."
+        )
     if pending == "run":
         return response(
             f"Running the comparison for {sites} on {draft.date} at {draft.time} "

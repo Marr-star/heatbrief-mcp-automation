@@ -102,8 +102,11 @@ def make_pdf(result):
                 ]
             )
         )
-    story += [p("Limitations", heading)]
-    story += [p("- " + item, small) for item in result["limitations"]]
+    story.append(
+        KeepTogether(
+            [p("Limitations", heading)] + [p("- " + item, small) for item in result["limitations"]]
+        )
+    )
     story += [
         p("Client follow-up draft", heading),
         p(result["follow_up_draft"], small),

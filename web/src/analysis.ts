@@ -14,8 +14,12 @@ export function highestReading(briefing: Briefing) {
   };
 }
 export function questionFocus(question: string) {
-  const high = /\b(highest|hottest|warmest|maximum|max)\b/i.test(question);
-  const low = /\b(lowest|coldest|coolest|minimum|min)\b/i.test(question);
+  const high = /\b(highest|hottest|hotter|warmest|warmer|maximum|max)\b/i.test(
+    question,
+  );
+  const low = /\b(lowest|coldest|colder|coolest|cooler|minimum|min)\b/i.test(
+    question,
+  );
   return high && !low ? "highest" : low && !high ? "lowest" : "both";
 }
 export function comparisonSummary(briefing: Briefing) {

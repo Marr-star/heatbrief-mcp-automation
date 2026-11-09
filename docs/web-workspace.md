@@ -18,7 +18,7 @@ Open http://127.0.0.1:8001, or use VS Code's **Terminal → Run Task → HeatBri
 5. Open **Client briefing**, edit the follow-up and save it. Approval/rejection requires the separate reviewer key from your local `.env` (`HEATBRIEF_REVIEW_TOKEN`). The key is entered only for that review request and is not saved by the frontend. Approval records a decision for manual sending.
 6. Use **Saved briefings** to revisit reports. **Replay saved request** runs the same request through n8n and reuses its stored result.
 
-Chat asks for missing details automatically. Reply with those details in the conversation to continue the pending comparison.
+Chat asks for missing details automatically. Reply with those details in the conversation to continue the pending comparison. Once sites are selected, you can refine them with **Just Tempe and Scottsdale**, **Remove Scottsdale**, or **Add Phoenix**; the response names the exact demo points it will use. **Which one is hotter/warmer/cooler/colder?** answers from the saved readings. Revised requests use a description matching their current sites and time.
 
 ## Demo window and examples
 
