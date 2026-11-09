@@ -183,3 +183,63 @@ async def test_guided_mode_has_an_honest_explanation(chat_store):
     answer = await reply(ChatInput(message="What does guided mean?"), chat_store[0])
     assert answer["action"] == "answer"
     assert "without a general-purpose language model enabled" in answer["message"]
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "i want the evidence",
+        "Show the evidence",
+        "Show the sources",
+        "Where did these readings come from?",
+        "Send me the proof",
+        "What is the evidence?",
+    ],
+)
+async def test_evidence_request_returns_saved_records_without_new_measurements(chat_store, message):
+    store, saved = chat_store
+    changed_draft = Draft(date="2026-07-15", time="15:37", timezone="Africa/Cairo")
+    answer = await reply(
+        ChatInput(message=message, briefing_id=saved["request_id"], draft=changed_draft), store
+    )
+    assert answer["action"] == "answer"
+    assert answer["view"] == "evidence"
+    assert "2025-09-20" in answer["message"]
+    assert "Mock data" in answer["message"]
+    assert "\nCoordinates:" in answer["message"]
+    for row in saved["measurements"]:
+        assert row["source_id"] in answer["message"]
+        assert row["source"] in answer["message"]
+        assert row["observed_at"] in answer["message"]
+        assert str(row["latitude"]) in answer["message"]
+        assert str(row["longitude"]) in answer["message"]
+
+
+async def test_evidence_without_selected_report_does_not_invent_records(chat_store):
+    answer = await reply(ChatInput(message="I want the evidence"), chat_store[0])
+    assert answer["action"] == "answer"
+    assert "no saved comparison selected" in answer["message"]
+    assert "view" not in answer
+    assert "mock-20250920" not in answer["message"]
+
+
+async def test_evidence_definition_still_explains_the_term(chat_store):
+    store, saved = chat_store
+    answer = await reply(
+        ChatInput(message="What does evidence mean?", briefing_id=saved["request_id"]), store
+    )
+    assert "Evidence is the source record" in answer["message"]
+    assert "view" not in answer
+
+
+async def test_missing_source_metadata_is_labeled_unavailable(chat_store):
+    store, saved = chat_store
+    row = saved["measurements"][0]
+    row.pop("source_id")
+    row.pop("observed_at")
+    store.complete(saved["request_id"], saved)
+    answer = await reply(
+        ChatInput(message="Show the sources", briefing_id=saved["request_id"]), store
+    )
+    assert "Evidence ID: Unavailable" in answer["message"]
+    assert "Observed: Not recorded" in answer["message"]

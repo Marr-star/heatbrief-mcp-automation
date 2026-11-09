@@ -339,3 +339,25 @@ async def test_chat_prepare_explanation_and_invalid_dates_never_queue(workspace_
         assert answer["action"] != "run"
         assert "run" not in answer
     assert calls == []
+
+
+async def test_evidence_chat_returns_source_records_without_starting_workflow(
+    workspace_client, saved_briefing
+):
+    client, calls, _behavior, root = workspace_client
+    store = Store(root / "data")
+    store.claim(BriefingRequest.model_validate(saved_briefing["request"]), "mock")
+    store.complete(saved_briefing["request_id"], saved_briefing)
+    headers = await session_headers(client)
+    response = await client.post(
+        "/api/chat",
+        headers=headers,
+        json={"message": "i want the evidence", "briefing_id": saved_briefing["request_id"]},
+    )
+    answer = response.json()
+    assert response.status_code == 200
+    assert answer["view"] == "evidence"
+    assert answer["action"] == "answer"
+    assert saved_briefing["measurements"][0]["source_id"] in answer["message"]
+    assert "run" not in answer
+    assert calls == []

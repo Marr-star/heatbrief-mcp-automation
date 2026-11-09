@@ -14,7 +14,7 @@ Open http://127.0.0.1:8001, or use VS Code's **Terminal → Run Task → HeatBri
 1. Type **Compare all demo sites on July 17, 2026 at noon Cairo time**. The comparison starts directly from chat. If details are missing, reply with them in chat; the pending request runs once complete. **Run the demo** selects and runs the original example. The form and **Run comparison** remain optional alternatives.
 2. Follow actual workflow events. The completed run links to its real n8n execution when the local execution record is available.
 3. Chat returns both extremes and the spread. Ask **Which is highest?**, **Which is lowest?**, **What is the average?**, **Show the ranking**, or **What does spread mean?** without starting another run. The cards mark both highest and lowest readings; a highest-specific question leads the finding with the maximum. The map shows positions, not an interpolated heatmap.
-4. Open **Evidence** for timestamps, units, coordinates, source records and limitations. Download Markdown or a PDF briefing.
+4. Say **I want the evidence** or **Show the sources** to receive the selected saved briefing’s source records in chat and open **Evidence** with source IDs expanded. This does not start another comparison. **What is evidence?** explains the term instead. Download Markdown or a PDF briefing from Evidence.
 5. Open **Client briefing**, edit the follow-up and save it. Approval/rejection requires the separate reviewer key from your local `.env` (`HEATBRIEF_REVIEW_TOKEN`). The key is entered only for that review request and is not saved by the frontend. Approval records a decision for manual sending.
 6. Use **Saved briefings** to revisit reports. **Replay saved request** runs the same request through n8n and reuses its stored result.
 

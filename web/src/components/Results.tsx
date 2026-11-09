@@ -206,7 +206,7 @@ export function Evidence({ briefing }: { briefing: Briefing }) {
 }
 function SourceRecord({ item }: { item: Measurement }) {
   return (
-    <details className="source-record">
+    <details className="source-record" open>
       <summary>
         <span>
           <FileText size={15} />

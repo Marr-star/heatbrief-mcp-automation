@@ -106,6 +106,7 @@ export type ChatReply = {
   action: "run" | "clarify" | "answer" | "prepare";
   pending_action: "none" | "run" | "prepare";
   run?: Run;
+  view?: "evidence";
   ready: boolean;
   missing_fields: string[];
   validation_errors: string[];

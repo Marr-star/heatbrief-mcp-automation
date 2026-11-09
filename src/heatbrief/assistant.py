@@ -238,6 +238,37 @@ def response(message, draft, *, action="answer", pending="none"):
     }
 
 
+def evidence_answer(result):
+    request = result["request"]
+    label = (
+        "Mock data: fictional demo readings, not weather observations or forecasts."
+        if result["comparison"]["mock"]
+        else "Source records from the saved comparison."
+    )
+    lines = [
+        f"Evidence for saved request {result['request_id']}.",
+        f"Requested: {request['date']} at {request['time']} ({request['timezone']}).",
+        label,
+    ]
+    for row in result["measurements"]:
+        temperature = row.get("temperature_c")
+        reading = f"{temperature:.1f} °C" if temperature is not None else "Unavailable"
+        lines.extend(
+            [
+                "",
+                f"{row['name']}: {reading}",
+                f"Coordinates: {row['latitude']}, {row['longitude']}",
+                f"Observed: {row.get('observed_at') or 'Not recorded'}",
+                f"Original unit: {row.get('unit') or 'Not recorded'}",
+                f"Source: {row.get('source') or 'Unavailable'}",
+                f"Evidence ID: {row.get('source_id') or 'Unavailable'}",
+            ]
+        )
+        if row.get("issue"):
+            lines.append("Issue: " + row["issue"])
+    return "\n".join(lines)
+
+
 async def reply(chat, store):
     lower = chat.message.lower().strip()
     prepare = bool(
@@ -260,6 +291,38 @@ async def reply(chat, store):
         re.fullmatch(r"(?:please )?(?:run|try|start|use) (?:the )?demo[.! ]*", lower)
     )
     explicit_run = explicit_run or demo_command
+    evidence_requested = bool(
+        re.search(
+            r"\b(?:evidence|sources?|source ids?|provenance|proof)\b"
+            r"|where.*(?:readings|numbers|temperatures).*(?:from|come)",
+            lower,
+        )
+    )
+    evidence_definition = bool(
+        re.fullmatch(
+            r"(?:what is|what does|define|meaning of) (?:the (?:word|term) )?"
+            r"evidence(?: mean)?[?.! ]*",
+            lower,
+        )
+    )
+    external_action = bool(
+        re.search(
+            r"\b(?:approve|reject|email|delete|deploy)\b|\bsend\b.+\bto\b",
+            lower,
+        )
+    )
+    if evidence_requested and not evidence_definition and not explicit_run and not external_action:
+        if not chat.briefing_id:
+            return response(
+                "There is no saved comparison selected yet. Run a comparison or open a saved "
+                "briefing, then ask for its evidence. I will show its actual source records.",
+                chat.draft,
+                pending=chat.pending_action,
+            )
+        saved = store.get(chat.briefing_id)
+        answer = response(evidence_answer(saved), chat.draft, pending=chat.pending_action)
+        answer["view"] = "evidence"
+        return answer
     if re.search(r"\b(?:approve|reject|send|email|delete|deploy)\b", lower) and not re.search(
         r"\b(?:unsent|do not send|don['’]?t send)\b", lower
     ):

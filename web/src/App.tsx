@@ -378,6 +378,10 @@ export default function App() {
       });
       setDraft(response.draft);
       setPendingAction(response.pending_action);
+      if (response.view === "evidence" && result) {
+        setTab("evidence");
+        setMobileView("results");
+      }
       if (response.run) {
         setRun(response.run);
         setLastRequest(response.run.request);
