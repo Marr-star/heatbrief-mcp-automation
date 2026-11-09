@@ -12,6 +12,7 @@ Each completed phase gets a separate commit and push to GitHub.
 
 - Phases 1–4 implemented, locally verified, committed and pushed separately. Phase 4 CI passed on Windows and Ubuntu.
 - Phase 5 includes sample artifacts, preview, prompts, setup guides and a two-minute scripted terminal recording of actual CLI requests.
-- Still unverified: live FortyGuard access and schema, coding-assistant UI use, and n8n runtime import/execution. The included recording demonstrates the tested mock CLI workflow.
+- Follow-up automation phase: n8n 2.46.6 imported, configured, published and tested locally. Eight webhook checks passed; five real execution records were saved.
+- Still unverified: live FortyGuard access/schema and coding-assistant UI use. The included recording demonstrates the mock CLI workflow; the later n8n runtime evidence is documented separately.
 
 Mock tests do not count as live provider observations. Native n8n and assistant UI demos can be recorded after those integrations are configured.

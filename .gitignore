@@ -10,5 +10,6 @@ data/
 reports/
 *.sqlite*
 node_modules/
+.automation/
 .DS_Store
 Thumbs.db

@@ -25,11 +25,12 @@ The two-minute scripted terminal recording contains actual successful MCP/CLI co
 | Human review | Automation token cannot approve; separate reviewer can approve; conflicting review gets 409 | API tests |
 | Real HTTP flow | Authenticated POST → real mock MCP → SQLite → report → replay → human review | Local Uvicorn + HTTP smoke script |
 | n8n graph and review JavaScript | Connections resolve; success/replay/error packets behave as expected | Static graph + JS harness |
+| Real n8n runtime | Eight automation checks passed; five execution records have success status | n8n 2.46.6 + actual webhook requests + SQLite evidence |
 
 ## Limits
 
 - No successful FortyGuard call, coverage check, API-key authentication, access-denied response or provider rate-limit observation is claimed.
-- The n8n export has not yet been imported or executed in an n8n runtime.
+- n8n runtime import, publication and execution are verified locally. Hosted/container deployments still need their own networking and credential checks. See [the runtime test report](automation-test-report.md).
 - No coding-assistant MCP UI session has been tested. The same MCP server is exercised with the official Python SDK.
 - The first GitHub CI run passed on Windows and Ubuntu: [run 42574927443](https://github.com/Marr-star/heatbrief-mcp-automation/actions/runs/42574927443), commit `4b54ced`. Later commits trigger their own checks.
 - There is no outbound email transport. Human approval records a decision for manual sending.

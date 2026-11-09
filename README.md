@@ -4,7 +4,7 @@
 
 Turn a business question and explicit coordinates into a reproducible temperature comparison, a traceable report, and an unsent client follow-up. Python calculates the ranking; an MCP-connected assistant can explain the evidence. An n8n webhook can trigger the same workflow through a local HTTP bridge.
 
-**Demo status:** working mock prototype. All temperatures and client details are fictional. Live FortyGuard integration is gated until access, transport and response schemas are verified. The n8n export still needs runtime import/execution testing.
+**Demo status:** working mock prototype, including a verified local n8n automation. All temperatures and client details are fictional. Live FortyGuard integration is gated until access, transport and response schemas are verified.
 
 ![Generated preview of the sample briefing, clearly labeled Mock data](docs/assets/report-preview.svg)
 
@@ -28,6 +28,8 @@ The fixture's lowest temperature is **Tempe Riverside, 34.1 °C**, with a 2.6 °
 Open [`docs/demo.html`](docs/demo.html) locally to play the two-minute recorded CLI walkthrough. [Transcript](docs/assets/demo-transcript.txt) · [Recording and walkthrough notes](docs/demo-walkthrough.md).
 
 ## Two connected demonstrations
+
+To test the actual automation in VS Code, choose **Terminal → Run Task → HeatBrief: start automation**, then **HeatBrief: test automation**. This runs an isolated local n8n instance and sends real webhook requests through it. Requires Node.js 24+. [Local automation guide](docs/local-automation.md) · [Runtime test evidence](docs/automation-test-report.md).
 
 | Entry point | Flow | Setup |
 |---|---|---|
@@ -65,4 +67,4 @@ The test suite covers real MCP stdio round trips, timezones/DST, provenance and 
 
 See [test evidence and limits](docs/testing-report.md), [MCP feedback](mcp-feedback.md), [troubleshooting](docs/troubleshooting.md), [example prompts](examples/prompts.md) and [build phases](docs/plan.md).
 
-Live coverage, provider errors and rate limits have **not** been observed. The recording shows actual CLI commands against the mock; a coding-assistant UI session and n8n execution remain unverified. [Integration boundary and live checklist](docs/integration.md).
+Live coverage, provider errors and rate limits have **not** been observed. The recording shows actual CLI commands against the mock. The n8n workflow has since passed a real local execution test; a coding-assistant UI session remains unverified. [Integration boundary and live checklist](docs/integration.md).

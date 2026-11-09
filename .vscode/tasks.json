@@ -2,6 +2,22 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "HeatBrief: start automation",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "python", "scripts/start-automation.py"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": []
+    },
+    {
+      "label": "HeatBrief: test automation",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "python", "scripts/test-automation.py"],
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": []
+    },
+    {
       "label": "HeatBrief: compare demo locations",
       "type": "process",
       "command": "uv",

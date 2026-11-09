@@ -2,6 +2,8 @@
 
 The exported workflow uses **Webhook → HeatBrief HTTP bridge → human review packet → response**. Inside the bridge, Python validates the request, calls the mock MCP over stdio, ranks measurements, generates the report and unsent draft, and saves them to SQLite. This keeps calculation and idempotency logic in one place. It does not claim a native FortyGuard MCP connection from n8n.
 
+For the project-local instance, use [the automatic start/test tasks](local-automation.md). The steps below describe manual setup for another n8n instance.
+
 ## Start the bridge
 
 ```powershell
@@ -29,6 +31,6 @@ The workflow returns an unsent follow-up and a `review_required` field. A human 
 
 ## Verification scope
 
-The bridge and MCP round trip are exercised by automated tests. The workflow JSON and review-packet JavaScript are checked locally. Import and execution inside a real n8n instance remain **unverified** until an instance is configured. Do not describe static checks as a successful n8n run.
+The workflow passed a real local test on n8n 2.46.6 on 2026-11-09, including authentication, saved report retrieval, duplicate replay, ID conflict, missing timezone and unsupported date. Five executions were recorded as successful; handled validation failures returned their expected HTTP error codes. See [runtime evidence](automation-test-report.md). A separate hosted instance still needs its own credentials, URL configuration and execution test.
 
 Native MCP Client alternative: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcpClient/. Configure it only after verifying the actual FortyGuard endpoint, transport, authentication and response schema. The working demo deliberately uses the tested local bridge.
