@@ -67,12 +67,15 @@ async def compare(request, provider):
         raise first_error or HeatBriefError("no_measurements", "No temperature readings available")
     ranking = sorted(available, key=lambda item: (item["temperature_c"], item["name"]))
     lowest = ranking[0]["temperature_c"]
+    highest = ranking[-1]["temperature_c"]
     comparison = {
         "mock": provider.mode == "mock",
         "incomplete": len(available) != len(readings),
         "lowest_c": lowest,
         "lowest_locations": [row["name"] for row in ranking if row["temperature_c"] == lowest],
-        "spread_c": round(ranking[-1]["temperature_c"] - lowest, 3),
+        "highest_c": highest,
+        "highest_locations": [row["name"] for row in ranking if row["temperature_c"] == highest],
+        "spread_c": round(highest - lowest, 3),
         "ranking": [{"name": r["name"], "temperature_c": r["temperature_c"]} for r in ranking],
     }
     limitations = issues + [

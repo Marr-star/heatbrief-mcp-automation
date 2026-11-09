@@ -11,9 +11,9 @@ Open http://127.0.0.1:8001, or use VS Code's **Terminal → Run Task → HeatBri
 
 ## Use it
 
-1. Choose **Try the demo sites**, review the named sites/date/time/timezone, then select **Run comparison**.
+1. Type **Compare all demo sites on July 17, 2026 at noon Cairo time**. The comparison starts directly from chat. If details are missing, reply with them in chat; the pending request runs once complete. **Run the demo** selects and runs the original example. The form and **Run comparison** remain optional alternatives.
 2. Follow actual workflow events. The completed run links to its real n8n execution when the local execution record is available.
-3. Explore the location map and temperature cards. The map shows site positions, not an interpolated temperature heatmap.
+3. Chat returns both extremes and the spread. Ask **Which is highest?**, **Which is lowest?**, **What is the average?**, **Show the ranking**, or **What does spread mean?** without starting another run. The cards mark both highest and lowest readings; a highest-specific question leads the finding with the maximum. The map shows positions, not an interpolated heatmap.
 4. Open **Evidence** for timestamps, units, coordinates, source records and limitations. Download Markdown or a PDF briefing.
 5. Open **Client briefing**, edit the follow-up and save it. Approval/rejection requires the separate reviewer key from your local `.env` (`HEATBRIEF_REVIEW_TOKEN`). The key is entered only for that review request and is not saved by the frontend. Approval records a decision for manual sending.
 6. Use **Saved briefings** to revisit reports. **Replay saved request** runs the same request through n8n and reuses its stored result.
@@ -32,7 +32,11 @@ Additional CLI requests: `examples/request-winter-morning.json` and `examples/re
 
 ## Guided and optional AI intake
 
-Guided mode works immediately without a model account. It extracts explicit dates/times/timezones and named demo sites, leaves missing fields unresolved, and validates completed requests. It is labeled **Guided demo assistant** in the interface.
+Guided mode works immediately without a model account. It handles explicit comparison commands and follow-up result questions, including dates written as ISO dates, full/abbreviated English month names or day-month-year, 12/24-hour times, noon/midnight, and today/tomorrow in the specified timezone (Africa/Cairo when no timezone has yet been supplied). Missing date/time/timezone or ambiguous locations require a chat clarification; exact named sites or **all demo sites** identify the catalog locations.
+
+Each chat message has its own ID, so repeating the same HTTP message cannot enqueue a duplicate successful comparison. An explicit **just prepare; don't run** keeps the request prepared until **run it**. Questions about a saved result use that result's timestamps and source records; they do not claim new measurements. Highest ties, negative values and unit conversion are handled by Python. Older saved comparisons derive their maximum from the stored ranking without rewriting their original reports.
+
+This is a bounded guided assistant for these commands and results, labeled **Guided demo assistant**. An optional configured model can help intake; the server validates every action. Neither mode can approve a draft or send an email from chat.
 
 To opt into AI intake, configure these locally in `.env` and restart the workspace:
 

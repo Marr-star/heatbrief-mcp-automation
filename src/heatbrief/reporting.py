@@ -1,6 +1,8 @@
 import html
 import re
 
+from heatbrief.statistics import extrema_narrative
+
 
 def text(value):
     """Keep user labels and questions literal when embedded in Markdown."""
@@ -8,12 +10,8 @@ def text(value):
     return re.sub(r"([\\`*_{}\[\]()#+.!|>~-])", r"\\\1", value)
 
 
-def narrative(comparison):
-    names = ", ".join(comparison["lowest_locations"])
-    prefix = "Among available readings, " if comparison["incomplete"] else "Among these locations, "
-    if len(comparison["lowest_locations"]) == 1:
-        return f"{prefix}{names} has the lowest temperature at {comparison['lowest_c']:.1f} °C."
-    return f"{prefix}{names} tie for the lowest temperature at {comparison['lowest_c']:.1f} °C."
+def narrative(comparison, focus="both"):
+    return extrema_narrative(comparison, focus)
 
 
 def render_report(request, comparison, readings, limitations):

@@ -1,5 +1,6 @@
 import {
   ArrowDown,
+  ArrowUp,
   ArrowUpRight,
   Check,
   ChevronRight,
@@ -11,6 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { Briefing, Measurement, Run } from "../types";
+import { highestReading, questionFocus } from "../analysis";
 
 export function displayDate(date: string) {
   return new Intl.DateTimeFormat("en", {
@@ -44,11 +46,12 @@ export function ComparisonCards({
     <div className="comparison-grid">
       {briefing.measurements.map((item, index) => {
         const lowest = briefing.comparison.lowest_locations.includes(item.name);
+        const highest = highestReading(briefing).names.includes(item.name);
         return (
           <button
             type="button"
             key={item.name}
-            className={`temperature-card ${lowest ? "is-lowest" : ""} ${selected === item.name ? "is-selected" : ""}`}
+            className={`temperature-card ${lowest ? "is-lowest" : ""} ${highest ? "is-highest" : ""} ${selected === item.name ? "is-selected" : ""}`}
             onClick={() => onSelect(item.name)}
           >
             <div className="temperature-card-top">
@@ -58,6 +61,11 @@ export function ComparisonCards({
               {lowest ? (
                 <span className="lowest-label">
                   <ArrowDown size={11} /> Lowest
+                </span>
+              ) : null}
+              {highest ? (
+                <span className="highest-label">
+                  <ArrowUp size={11} /> Highest
                 </span>
               ) : null}
             </div>
@@ -80,6 +88,10 @@ export function ComparisonCards({
 }
 export function Finding({ briefing }: { briefing: Briefing }) {
   const { comparison: c } = briefing;
+  const high = highestReading(briefing);
+  const focus = questionFocus(briefing.request.question);
+  const names = focus === "highest" ? high.names : c.lowest_locations;
+  const label = focus === "highest" ? "highest" : "lowest";
   return (
     <section className="finding-card">
       <span className="finding-icon">
@@ -88,12 +100,32 @@ export function Finding({ briefing }: { briefing: Briefing }) {
       <div>
         <p className="eyebrow">THE COMPARISON</p>
         <h3>
-          {c.lowest_locations.join(" and ")}{" "}
-          {c.lowest_locations.length > 1
-            ? "tie for the lowest temperature"
-            : "has the lowest temperature"}
-          .
+          {focus === "both" ? (
+            "Lowest and highest temperatures."
+          ) : (
+            <>
+              {names.join(" and ")}{" "}
+              {names.length > 1
+                ? `tie for the ${label} temperature`
+                : `has the ${label} temperature`}
+              .
+            </>
+          )}
         </h3>
+        <dl className="finding-extremes">
+          <div>
+            <dt>Lowest</dt>
+            <dd>
+              {c.lowest_c.toFixed(1)} °C · {c.lowest_locations.join(", ")}
+            </dd>
+          </div>
+          <div>
+            <dt>Highest</dt>
+            <dd>
+              {high.value.toFixed(1)} °C · {high.names.join(", ")}
+            </dd>
+          </div>
+        </dl>
         <p>
           {c.spread_c.toFixed(1)} °C separates the highest and lowest available
           readings. {c.ranking.length}/{briefing.request.locations.length} sites
@@ -249,6 +281,11 @@ export function ClientBriefing({
             <span>Lowest temperature</span>
             <strong>{briefing.comparison.lowest_c.toFixed(1)} °C</strong>
             <span>{briefing.comparison.lowest_locations.join(", ")}</span>
+          </div>
+          <div className="report-stat report-stat-highest">
+            <span>Highest temperature</span>
+            <strong>{highestReading(briefing).value.toFixed(1)} °C</strong>
+            <span>{highestReading(briefing).names.join(", ")}</span>
           </div>
           {briefing.measurements.map((item) => (
             <div key={item.name} className="report-line">

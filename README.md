@@ -15,7 +15,7 @@ uv run python scripts/start-workspace.py
 
 Open **http://127.0.0.1:8001**. In VS Code you can use **Terminal → Run Task → HeatBrief: open web workspace**.
 
-The website provides guided request intake, a location map, comparison cards, evidence, real n8n run tracking, saved briefings, editable client follow-ups, reviewer approval and PDF/Markdown downloads. It runs locally with your existing automation. Guided mode works without a model key; optional AI intake is documented in [the workspace guide](docs/web-workspace.md).
+The website runs complete comparison commands directly from chat, asks for missing details conversationally, and answers highest/lowest, average, ranking and terminology questions from saved evidence. It includes a location map, both-extremes comparison cards, real n8n tracking, saved briefings, editable follow-ups, review and PDF/Markdown downloads. It runs locally with your existing automation. Guided mode works without a model key; optional AI intake is documented in [the workspace guide](docs/web-workspace.md).
 
 ![Local HeatBrief workspace with a completed n8n run, comparison map and mock temperature evidence](docs/assets/workspace-preview.jpg)
 
@@ -34,7 +34,7 @@ uv run heatbrief show demo-phoenix-001
 
 The comparison writes `report.md`, `follow-up.txt` and `briefing.json` to `reports/demo-phoenix-001/`, with request history in `data/heatbrief.sqlite3`. Repeating the same request replays the saved result. Changed content needs a new ID.
 
-The fixture's lowest temperature is **Tempe Riverside, 34.1 °C**, with a 2.6 °C spread. Temperature alone does not establish outdoor work or event safety. Follow-ups remain drafts for human review.
+The original fixture's lowest temperature is **Tempe Riverside, 34.1 °C**; the highest is **Scottsdale Courtyard, 36.7 °C**, with a 2.6 °C spread. Temperature alone does not establish outdoor work or event safety. Follow-ups remain drafts for human review.
 
 Open [`docs/demo.html`](docs/demo.html) locally to play the two-minute recorded CLI walkthrough. [Transcript](docs/assets/demo-transcript.txt) · [Recording and walkthrough notes](docs/demo-walkthrough.md).
 

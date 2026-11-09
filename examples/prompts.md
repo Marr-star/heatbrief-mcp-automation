@@ -36,3 +36,16 @@ Compare the three demo sites on 2026-07-15 at 15:37 America/Phoenix.
 Compare the three demo sites on 2026-11-09 at 18:45 Africa/Cairo.
 
 Each request produces generated mock readings for that instant. Keep the synthetic label and cite its timestamp-specific evidence IDs. Use a new request ID when changing the date/time.
+
+
+## Chat commands that run directly
+
+Which is hottest among all demo sites on July 17, 2026 at noon Cairo time?
+
+Compare all demo sites and show both the highest and lowest temperatures.
+
+If the second request is missing a date/time/timezone, reply: July 16, 2026 at 4:12pm Phoenix time. The pending comparison runs directly, without selecting locations or pressing Run comparison.
+
+Follow-ups: Which is highest? Which is lowest? What is the average? Show the ranking. What does spread mean? What is n8n?
+
+To prepare without executing: Just prepare, don't run. Compare all demo sites on 2026-07-15 at 15:37 America/Phoenix. Then say: Run it.

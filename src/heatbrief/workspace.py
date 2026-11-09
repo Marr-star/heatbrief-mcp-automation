@@ -25,6 +25,7 @@ from heatbrief.demo import DEMO_COVERAGE, DEMO_TIME, validate_demo_time
 from heatbrief.errors import HeatBriefError
 from heatbrief.models import BriefingRequest
 from heatbrief.pdf_report import make_pdf
+from heatbrief.statistics import highest
 from heatbrief.store import Store
 from heatbrief.workspace_jobs import JobStore
 
@@ -59,6 +60,7 @@ def history_summary(result):
         "sites": len(request["locations"]),
         "status": result["status"],
         "lowest_c": result["comparison"]["lowest_c"],
+        "highest_c": highest(result["comparison"])[0],
         "mock": result["comparison"]["mock"],
     }
 
@@ -283,12 +285,7 @@ def create_app():
     def briefing(request_id: str):
         return Store(data_dir()).get(request_id)
 
-    @app.post("/api/chat", dependencies=[Depends(mutation)])
-    async def chat(message: ChatInput):
-        return await reply(message, Store(data_dir()))
-
-    @app.post("/api/runs", status_code=202, dependencies=[Depends(mutation)])
-    async def run(request: BriefingRequest):
+    def enqueue_run(request, *, reuse_completed=False):
         validate_demo_time(request)
         jobs = JobStore(data_dir())
         try:
@@ -297,7 +294,9 @@ def create_app():
                 raise HeatBriefError(
                     "idempotency_conflict", "Use a new request ID for changed content", 409
                 )
-            if previous["state"] in ("queued", "running"):
+            if previous["state"] in ("queued", "running") or (
+                reuse_completed and previous["state"] == "completed"
+            ):
                 return previous
         except HeatBriefError as exc:
             if exc.code != "not_found":
@@ -308,6 +307,19 @@ def create_app():
         app.state.tasks.add(task)
         task.add_done_callback(app.state.tasks.discard)
         return job
+
+    @app.post("/api/chat", dependencies=[Depends(mutation)])
+    async def chat(message: ChatInput):
+        answer = await reply(message, Store(data_dir()))
+        if answer["action"] == "run" and answer["ready"]:
+            request_id = "chat-" + (message.message_id or secrets.token_hex(16))
+            request = BriefingRequest.model_validate({"request_id": request_id, **answer["draft"]})
+            answer["run"] = enqueue_run(request, reuse_completed=True)
+        return answer
+
+    @app.post("/api/runs", status_code=202, dependencies=[Depends(mutation)])
+    async def run(request: BriefingRequest):
+        return enqueue_run(request)
 
     @app.get("/api/runs/{job_id}", dependencies=[Depends(session)])
     def run_status(job_id: str):

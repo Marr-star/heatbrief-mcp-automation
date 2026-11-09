@@ -19,3 +19,5 @@ Each completed phase gets a separate commit and push to GitHub.
 Mock tests do not count as live provider observations. Native n8n and assistant UI demos can be recorded after those integrations are configured.
 
 Expanded demo coverage: completed an inclusive three-year window at minute resolution, six date/time presets, timezone-aware validation, reproducible synthetic provenance, regression coverage and two real n8n browser runs.
+
+Chat execution and both-extremes phase: completed direct text-to-workflow execution, conversational clarification, stored-result questions, definitions, idempotent message handling, maximum/minimum results and exports, 103 tests and real browser/n8n runs 26 and 27.

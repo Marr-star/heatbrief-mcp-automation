@@ -27,6 +27,8 @@ export type Briefing = {
     mock: boolean;
     incomplete: boolean;
     lowest_c: number;
+    highest_c?: number;
+    highest_locations?: string[];
     lowest_locations: string[];
     spread_c: number;
     ranking: { name: string; temperature_c: number }[];
@@ -51,6 +53,7 @@ export type HistoryItem = {
   sites: number;
   status: string;
   lowest_c: number;
+  highest_c?: number;
   mock: boolean;
 };
 export type Run = {
@@ -100,6 +103,9 @@ export type ChatReply = {
   message: string;
   draft: Draft;
   mode: "ai" | "guided";
+  action: "run" | "clarify" | "answer" | "prepare";
+  pending_action: "none" | "run" | "prepare";
+  run?: Run;
   ready: boolean;
   missing_fields: string[];
   validation_errors: string[];

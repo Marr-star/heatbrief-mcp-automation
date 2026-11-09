@@ -25,6 +25,7 @@ import {
 import { api, ApiError, downloadPdf, downloadText, setCsrf } from "./api";
 import { RequestDetails } from "./components/RequestDetails";
 import { demoTimeIssue } from "./demo";
+import { comparisonSummary } from "./analysis";
 import {
   ClientBriefing,
   ComparisonCards,
@@ -64,7 +65,7 @@ const requestDraft = (value: Draft): Draft => ({
   locations: value.locations,
 });
 const welcome =
-  "Tell me what you’re planning. I’ll help you compare temperatures, trace the evidence, and prepare a client briefing.";
+  "Tell me which sites, date, time and timezone to compare. I’ll run the comparison directly and show both highest and lowest readings. You can also ask questions about the result.";
 const message = (role: "assistant" | "user", content: string): ChatMessage => ({
   id: crypto.randomUUID(),
   role,
@@ -222,6 +223,9 @@ export default function App() {
   ]);
   const [input, setInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<
+    "none" | "run" | "prepare"
+  >("none");
   const [run, setRun] = useState<Run | null>(null);
   const [lastRequest, setLastRequest] = useState<BriefingRequest | null>(null);
   const [tab, setTab] = useState<"overview" | "evidence" | "client">(
@@ -273,7 +277,7 @@ export default function App() {
           setMessages([
             message(
               "assistant",
-              `Your latest saved briefing is ready. ${data.latest.comparison.lowest_locations.join(" and ")} recorded the lowest temperature at ${data.latest.comparison.lowest_c.toFixed(1)} °C in the fictional demo. Explore the evidence, or start a new briefing.`,
+              `Your latest saved briefing is ready. ${comparisonSummary(data.latest)} These are fictional demo readings. Ask for a new comparison or a detail about this result.`,
             ),
           ]);
         }
@@ -317,7 +321,7 @@ export default function App() {
             ...previous,
             message(
               "assistant",
-              `${next.result!.comparison.lowest_locations.join(" and ")} ${next.result!.comparison.lowest_locations.length > 1 ? "tie for the lowest temperature" : "has the lowest temperature"} at ${next.result!.comparison.lowest_c.toFixed(1)} °C. ${next.result!.replayed ? "I reused the saved briefing for this identical request." : "The report and follow-up draft are saved."} Review the evidence and client draft when you’re ready.`,
+              `${comparisonSummary(next.result!)} ${next.result!.replayed ? "I reused the saved briefing for this identical request." : "The report and follow-up draft are saved."} These are fictional demo readings. Ask me about either extreme, the average or the ranking.`,
             ),
           ]);
           setHistory(await api<HistoryItem[]>("/history"));
@@ -368,9 +372,22 @@ export default function App() {
           message: text.trim(),
           draft: requestDraft(base),
           briefing_id: briefingId,
+          pending_action: pendingAction,
+          message_id: crypto.randomUUID(),
         }),
       });
       setDraft(response.draft);
+      setPendingAction(response.pending_action);
+      if (response.run) {
+        setRun(response.run);
+        setLastRequest(response.run.request);
+        setResult(response.run.result || null);
+        setFollowUp(response.run.result?.follow_up_draft || "");
+        setTab("overview");
+        setSelectedSite(null);
+        // Keep chat in view; the completed answer arrives here automatically.
+        setMobileView("assistant");
+      }
       setMessages((previous) => [
         ...previous,
         message("assistant", response.message),
@@ -392,6 +409,7 @@ export default function App() {
   function newBriefing() {
     if (busy) return;
     setDraft(emptyDraft());
+    setPendingAction("none");
     setResult(null);
     setRun(null);
     setLastRequest(null);
@@ -418,7 +436,7 @@ export default function App() {
     const next: Draft = {
       ...emptyDraft(),
       question:
-        "Which of these three locations has the lowest temperature for our site visit?",
+        "Compare the highest and lowest temperatures across these three locations for our site visit",
       locations: boot.catalog,
       ...(complete ? boot.fixture : {}),
     };
@@ -426,6 +444,7 @@ export default function App() {
     setRun(null);
     setLastRequest(null);
     setDraft(next);
+    setPendingAction("none");
     setTab("overview");
     setMobileView("assistant");
     setSelectedSite(null);
@@ -755,7 +774,7 @@ export default function App() {
                   onClick={() => loadDemo(true)}
                   disabled={busy || chatBusy}
                 >
-                  <Sun size={13} /> Try the demo sites
+                  <Sun size={13} /> Run the demo
                 </button>
                 <button
                   onClick={() => loadDemo(false)}
@@ -1112,6 +1131,9 @@ export default function App() {
                   </div>
                   <strong className="history-temp">
                     {item.lowest_c.toFixed(1)}°
+                    {item.highest_c != null
+                      ? `–${item.highest_c.toFixed(1)}°`
+                      : ""}
                   </strong>
                   <ChevronRight size={16} />
                 </button>

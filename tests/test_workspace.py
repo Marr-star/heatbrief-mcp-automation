@@ -269,3 +269,73 @@ async def test_workspace_passes_supported_instants_to_automation(
     assert calls[0]["date"] == day
     assert calls[0]["time"] == clock + ":00"
     assert calls[0]["timezone"] == zone
+
+
+async def test_complete_chat_starts_one_real_workflow_job_and_deduplicates_message(
+    workspace_client,
+):
+    client, calls, _behavior, _root = workspace_client
+    headers = await session_headers(client)
+    payload = {
+        "message": "Compare all demo sites on 2026-07-15 at 3:37pm Phoenix time",
+        "message_id": "auto-run-test",
+    }
+    response = await client.post("/api/chat", headers=headers, json=payload)
+    assert response.status_code == 200
+    answer = response.json()
+    assert answer["action"] == "run"
+    assert answer["run"]["id"] == "chat-auto-run-test"
+    assert answer["draft"]["time"] == "15:37"
+    assert (await wait_job(client, answer["run"]["id"]))["state"] == "completed"
+    assert len(calls) == 1
+    repeated = await client.post("/api/chat", headers=headers, json=payload)
+    assert repeated.json()["run"]["state"] == "completed"
+    assert len(calls) == 1
+    followup = await client.post(
+        "/api/chat",
+        headers=headers,
+        json={"message": "Which is highest?", "briefing_id": answer["run"]["id"]},
+    )
+    assert followup.json()["action"] == "answer"
+    assert "36.7" in followup.json()["message"]
+    assert "run" not in followup.json()
+    assert len(calls) == 1
+
+
+async def test_chat_collects_missing_details_then_starts_without_form_submission(workspace_client):
+    client, calls, _behavior, _root = workspace_client
+    headers = await session_headers(client)
+    first = (
+        await client.post("/api/chat", headers=headers, json={"message": "Compare all demo sites"})
+    ).json()
+    assert first["action"] == "clarify"
+    assert calls == []
+    second = await client.post(
+        "/api/chat",
+        headers=headers,
+        json={
+            "message": "15 July 2026 at 3:37pm Phoenix time",
+            "draft": first["draft"],
+            "pending_action": first["pending_action"],
+            "message_id": "clarified-run",
+        },
+    )
+    answer = second.json()
+    assert answer["action"] == "run"
+    assert (await wait_job(client, answer["run"]["id"]))["state"] == "completed"
+    assert len(calls) == 1
+
+
+async def test_chat_prepare_explanation_and_invalid_dates_never_queue(workspace_client):
+    client, calls, _behavior, _root = workspace_client
+    headers = await session_headers(client)
+    for message in [
+        "Just prepare; don't run. Compare all demo sites on 2026-07-15 at 15:37 America/Phoenix",
+        "Compare all demo sites on 2030-01-01 at 15:37 America/Phoenix",
+        "What does spread mean?",
+        "Approve and email this report",
+    ]:
+        answer = (await client.post("/api/chat", headers=headers, json={"message": message})).json()
+        assert answer["action"] != "run"
+        assert "run" not in answer
+    assert calls == []
