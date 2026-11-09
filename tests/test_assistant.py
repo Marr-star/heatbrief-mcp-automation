@@ -1,6 +1,7 @@
 import json
 
 import httpx
+import pytest
 
 from heatbrief.assistant import CATALOG, ChatInput, Draft, extract_explicit, model_intake, reply
 from heatbrief.store import Store
@@ -103,3 +104,26 @@ async def test_complete_form_respects_dst_validation(tmp_path, monkeypatch):
     )
     assert response["ready"] is False
     assert any("ambiguous" in error for error in response["validation_errors"])
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        "2030-01-01 at 14:00 America/Phoenix",
+        "2025-09-20 at 15:00 America/Phoenix",
+        "2025-09-20 at 14:00 Africa/Cairo",
+    ],
+)
+async def test_intake_explains_demo_coverage_without_overwriting_user_input(
+    tmp_path, monkeypatch, selection
+):
+    monkeypatch.setenv("HEATBRIEF_ASSISTANT_MODE", "guided")
+    response = await reply(
+        ChatInput(message="Compare the three demo sites on " + selection), Store(tmp_path)
+    )
+    assert response["ready"] is False
+    assert "2025-09-20 at 14:00 America/Phoenix" in response["message"]
+    assert "Live temperature data is not connected" in response["message"]
+    assert response["draft"]["date"] == selection.split()[0]
+    assert response["draft"]["time"] == selection.split()[2]
+    assert response["draft"]["timezone"] == selection.split()[3]

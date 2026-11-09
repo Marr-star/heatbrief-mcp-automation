@@ -718,6 +718,23 @@ input[type="checkbox"] {
   color: #a3ae95;
   padding-bottom: 10px;
 }
+.demo-time-warning {
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid #dfc67e;
+  border-radius: 10px;
+  background: #fff9e9;
+  color: #69511c;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.demo-time-warning .button {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.request-details [aria-invalid="true"] {
+  border-color: #aa7d24;
+}
 .run-button-area {
   padding: 13px 16px 14px;
   border-top: 1px solid #edf0e7;

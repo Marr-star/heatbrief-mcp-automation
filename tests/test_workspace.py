@@ -10,6 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from pypdf import PdfReader
 
 import heatbrief.workspace as workspace
+from heatbrief.errors import HeatBriefError
 from heatbrief.models import BriefingRequest
 from heatbrief.pdf_report import make_pdf
 from heatbrief.store import Store
@@ -156,7 +157,7 @@ async def test_workflow_failure_is_visible_and_does_not_invent_report(workspace_
     headers = await session_headers(client)
     behavior["failure"] = True
     payload = json.loads(Path("examples/request.json").read_text())
-    payload.update(request_id="unsupported-workspace", date="2030-01-01")
+    payload.update(request_id="downstream-workspace-error")
     await client.post("/api/runs", headers=headers, json=payload)
     failed = await wait_job(client, payload["request_id"])
     assert failed["state"] == "failed"
@@ -217,3 +218,27 @@ def test_interrupted_jobs_are_recoverable(tmp_path, saved_briefing):
     jobs.update_job(request.request_id, state="running")
     jobs.recover_interrupted()
     assert jobs.get_job(request.request_id)["error"]["error"] == "interrupted"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"date": "2030-01-01"},
+        {"time": "15:00"},
+        {"timezone": "Africa/Cairo"},
+    ],
+)
+async def test_unsupported_demo_time_is_rejected_before_starting_workflow(
+    workspace_client, changes
+):
+    client, calls, _behavior, root = workspace_client
+    headers = await session_headers(client)
+    payload = json.loads(Path("examples/request.json").read_text())
+    payload.update(request_id="unsupported-preflight", **changes)
+    response = await client.post("/api/runs", headers=headers, json=payload)
+    assert response.status_code == 422
+    assert response.json()["error"] == "unsupported_date"
+    assert "2025-09-20 at 14:00 America/Phoenix" in response.json()["message"]
+    assert calls == []
+    with pytest.raises(HeatBriefError, match="not found"):
+        JobStore(root / "data").get_job(payload["request_id"])

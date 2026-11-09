@@ -237,7 +237,17 @@ export default function App() {
   const [reviewError, setReviewError] = useState("");
   const messageList = useRef<HTMLDivElement>(null);
   const busy = run?.state === "queued" || run?.state === "running";
+  const unsupportedDemoTime = Boolean(
+    boot?.data_mode === "mock" &&
+      draft.date &&
+      draft.time &&
+      draft.timezone &&
+      (draft.date !== boot.fixture.date ||
+        draft.time.slice(0, 5) !== boot.fixture.time ||
+        draft.timezone !== boot.fixture.timezone),
+  );
   const ready =
+    !unsupportedDemoTime &&
     draft.question.trim().length >= 10 &&
     draft.locations.length >= 2 &&
     Boolean(draft.date && draft.time && draft.timezone);
@@ -783,6 +793,14 @@ export default function App() {
               <RequestDetails
                 draft={draft}
                 catalog={boot.catalog}
+                fixture={boot.fixture}
+                unsupportedTime={unsupportedDemoTime}
+                onUseDemoTime={() => {
+                  setDraft((previous) => ({ ...previous, ...boot.fixture }));
+                  setRun(null);
+                  setLastRequest(null);
+                  setToast("");
+                }}
                 onChange={setDraft}
                 disabled={Boolean(busy)}
               />

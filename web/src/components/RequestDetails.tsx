@@ -10,10 +10,21 @@ import type { Draft, Site } from "../types";
 type Props = {
   draft: Draft;
   catalog: Site[];
+  fixture: Pick<Draft, "date" | "time" | "timezone">;
+  unsupportedTime: boolean;
+  onUseDemoTime: () => void;
   onChange: (draft: Draft) => void;
   disabled: boolean;
 };
-export function RequestDetails({ draft, catalog, onChange, disabled }: Props) {
+export function RequestDetails({
+  draft,
+  catalog,
+  fixture,
+  unsupportedTime,
+  onUseDemoTime,
+  onChange,
+  disabled,
+}: Props) {
   const update = (key: keyof Draft, value: unknown) =>
     onChange({ ...draft, [key]: value });
   function toggle(site: Site) {
@@ -66,6 +77,8 @@ export function RequestDetails({ draft, catalog, onChange, disabled }: Props) {
             </span>
             <input
               aria-label="Comparison date"
+              aria-invalid={unsupportedTime}
+              aria-describedby="demo-time-coverage"
               type="date"
               value={draft.date}
               onChange={(e) => update("date", e.target.value)}
@@ -77,6 +90,8 @@ export function RequestDetails({ draft, catalog, onChange, disabled }: Props) {
             </span>
             <input
               aria-label="Comparison time"
+              aria-invalid={unsupportedTime}
+              aria-describedby="demo-time-coverage"
               type="time"
               value={draft.time}
               onChange={(e) => update("time", e.target.value)}
@@ -87,6 +102,8 @@ export function RequestDetails({ draft, catalog, onChange, disabled }: Props) {
           <span className="field-label">Timezone</span>
           <select
             aria-label="Comparison timezone"
+            aria-invalid={unsupportedTime}
+            aria-describedby="demo-time-coverage"
             value={draft.timezone}
             onChange={(e) => update("timezone", e.target.value)}
           >
@@ -106,9 +123,25 @@ export function RequestDetails({ draft, catalog, onChange, disabled }: Props) {
             onChange={(e) => update("client_name", e.target.value)}
           />
         </label>
-        <p className="fixture-note">
-          Demo coverage: 20 Sep 2025, 14:00 America/Phoenix.
-        </p>
+        <div className={unsupportedTime ? "demo-time-warning" : "fixture-note"}>
+          <p
+            id="demo-time-coverage"
+            role={unsupportedTime ? "alert" : undefined}
+          >
+            {unsupportedTime
+              ? `No demo readings for this selection. Use ${fixture.date} at ${fixture.time} ${fixture.timezone}.`
+              : `Demo readings only: ${fixture.date} at ${fixture.time} ${fixture.timezone}.`}
+          </p>
+          {unsupportedTime ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={onUseDemoTime}
+            >
+              Use demo date and time
+            </button>
+          ) : null}
+        </div>
       </fieldset>
     </details>
   );

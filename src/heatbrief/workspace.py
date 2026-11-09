@@ -21,6 +21,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from heatbrief.api import Review
 from heatbrief.assistant import CATALOG, ChatInput, assistant_mode, reply
+from heatbrief.demo import DEMO_TIME, validate_demo_time
 from heatbrief.errors import HeatBriefError
 from heatbrief.models import BriefingRequest
 from heatbrief.pdf_report import make_pdf
@@ -265,7 +266,7 @@ def create_app():
             "history": [history_summary(item) for item in recent],
             "latest": recent[0] if recent else None,
             "latest_run": latest_run,
-            "fixture": {"date": "2025-09-20", "time": "14:00", "timezone": "America/Phoenix"},
+            "fixture": DEMO_TIME,
             "workflow_url": "http://localhost:5678/workflow/heatbriefDemo001",
         }
 
@@ -287,6 +288,7 @@ def create_app():
 
     @app.post("/api/runs", status_code=202, dependencies=[Depends(mutation)])
     async def run(request: BriefingRequest):
+        validate_demo_time(request)
         jobs = JobStore(data_dir())
         try:
             previous = jobs.get_job(request.request_id)

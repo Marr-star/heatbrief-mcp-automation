@@ -18,7 +18,7 @@ Open http://127.0.0.1:8001, or use VS Code's **Terminal → Run Task → HeatBri
 5. Open **Client briefing**, edit the follow-up and save it. Approval/rejection requires the separate reviewer key from your local `.env` (`HEATBRIEF_REVIEW_TOKEN`). The key is entered only for that review request and is not saved by the frontend. Approval records a decision for manual sending.
 6. Use **Saved briefings** to revisit reports. **Replay saved request** runs the same request through n8n and reuses its stored result.
 
-The **Clarify a request** example intentionally omits date/time/timezone so you can see the assistant ask for missing details. Unsupported dates produce an explicit error through the real workflow. All demo temperatures are fictional.
+The **Clarify a request** example intentionally omits date/time/timezone so you can see the assistant ask for missing details. Unsupported dates, times and timezones are blocked before starting a workflow. Choose **Use demo date and time** to explicitly apply the supported sample time while keeping your other request details. All demo temperatures are fictional.
 
 ## Guided and optional AI intake
 

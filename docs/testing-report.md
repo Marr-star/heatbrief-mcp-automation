@@ -6,6 +6,8 @@ Local result on 2026-11-09: **35 tests passed**, lint passed, formatting passed,
 
 Web workspace phase: **47 tests passed** locally. The React/TypeScript production build passed. Browser checks covered the desktop two-panel layout, narrow-screen panels, missing-field clarification, a real n8n comparison (execution **13**, request `web-5ba6dd8644f4413688`), source evidence, a saved draft edit, PDF download and rejection of an invalid reviewer key. The two-page exported PDF was rendered and visually inspected for readability, provenance and mock labels. Optional AI intake was checked with a simulated provider response; no live model key was configured.
 
+Demo-time recovery regression: **53 tests passed**, with lint, formatting and frontend build passing. Unsupported dates, times and timezones are rejected before a workspace job or webhook call is created. The assistant keeps the requested fields and explains the fixture limits. Browser verification recovered the September 9 selection with **Use demo date and time**, then completed the corrected request in real n8n execution **17**.
+
 The two-minute scripted terminal recording contains actual successful MCP/CLI commands, a saved-result replay and a missing-timezone failure. Its embedded offline player's playback JavaScript passed a local harness check; visual browser playback was not tested.
 
 | Scenario | Observed result | Evidence type |

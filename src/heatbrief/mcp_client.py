@@ -6,6 +6,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.shared.exceptions import McpError
 
+from heatbrief.demo import DEMO_COVERAGE_MESSAGE
 from heatbrief.errors import HeatBriefError
 
 
@@ -48,6 +49,8 @@ async def call_env_params(session, arguments: dict) -> dict:
             (code for code in ("unsupported_date", "unsupported_location") if code in message),
             "tool_error",
         )
+        if code == "unsupported_date":
+            message = DEMO_COVERAGE_MESSAGE
         raise HeatBriefError(code, message, 502 if code == "tool_error" else 422)
     if result.structuredContent is not None:
         return result.structuredContent

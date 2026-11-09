@@ -8,6 +8,7 @@ from datetime import datetime
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from heatbrief.demo import validate_demo_time
 from heatbrief.errors import HeatBriefError
 from heatbrief.models import BriefingRequest, Location
 from heatbrief.reporting import narrative
@@ -110,9 +111,14 @@ def readiness(draft):
     if missing:
         return missing, []
     try:
-        BriefingRequest.model_validate({"request_id": "intake-validation", **draft.model_dump()})
+        request = BriefingRequest.model_validate(
+            {"request_id": "intake-validation", **draft.model_dump()}
+        )
+        validate_demo_time(request)
     except ValidationError as exc:
         return [], [error["msg"] for error in exc.errors()]
+    except HeatBriefError as exc:
+        return [], [str(exc)]
     return [], []
 
 
