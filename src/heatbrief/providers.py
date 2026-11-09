@@ -23,6 +23,7 @@ class MockProvider:
                         "start_date": request.date.isoformat(),
                         "start_time": request.time.strftime("%H:%M"),
                         "filter_type": 1,
+                        "timezone": request.timezone,
                     },
                 },
             )

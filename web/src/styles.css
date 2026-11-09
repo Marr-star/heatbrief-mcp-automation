@@ -2784,3 +2784,18 @@ input[type="checkbox"] {
     font-size: 9px;
   }
 }
+
+.demo-window {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #dce4d2;
+  border-radius: 10px;
+  background: #f4f7ee;
+  color: #475b40;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.demo-window .muted {
+  margin-top: 6px;
+  font-size: 11px;
+}

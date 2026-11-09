@@ -17,3 +17,5 @@ Each completed phase gets a separate commit and push to GitHub.
 - Still unverified: live FortyGuard access/schema and coding-assistant UI use. The included recording demonstrates the mock CLI workflow; the later n8n runtime evidence is documented separately.
 
 Mock tests do not count as live provider observations. Native n8n and assistant UI demos can be recorded after those integrations are configured.
+
+Expanded demo coverage: completed an inclusive three-year window at minute resolution, six date/time presets, timezone-aware validation, reproducible synthetic provenance, regression coverage and two real n8n browser runs.

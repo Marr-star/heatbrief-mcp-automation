@@ -10,7 +10,7 @@ Expected calculation: Tempe Riverside, 34.1 °C; spread 2.6 °C. This is fiction
 
 Compare Phoenix, Tempe and Scottsdale for an outdoor visit next Saturday afternoon. Prepare the client report.
 
-Expected assistant behavior: ask for exact coordinates, date, time and timezone before calling the tool. Do not silently geocode or infer missing inputs. The fixed mock only supports the documented fixture.
+Expected assistant behavior: ask for exact coordinates, date, time and timezone before calling the tool. Do not silently geocode or infer missing inputs. The mock supports every minute from 2025-01-01 00:00 through 2027-12-31 23:59 America/Phoenix inclusive at the three demo sites.
 
 ## Unsupported data
 
@@ -25,3 +25,14 @@ If a source returns a missing reading, compare only the available readings, labe
 ## Retrieval and duplicate request
 
 Read `demo-phoenix-001` using `read_briefing`. Repeating an identical creation request should return the saved briefing. Changed content needs a new request ID.
+
+
+## More dates and times
+
+Compare the three demo sites on 2025-09-09 at 14:00 America/Phoenix.
+
+Compare the three demo sites on 2026-07-15 at 15:37 America/Phoenix.
+
+Compare the three demo sites on 2026-11-09 at 18:45 Africa/Cairo.
+
+Each request produces generated mock readings for that instant. Keep the synthetic label and cite its timestamp-specific evidence IDs. Use a new request ID when changing the date/time.

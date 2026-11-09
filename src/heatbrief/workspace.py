@@ -21,7 +21,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from heatbrief.api import Review
 from heatbrief.assistant import CATALOG, ChatInput, assistant_mode, reply
-from heatbrief.demo import DEMO_TIME, validate_demo_time
+from heatbrief.demo import DEMO_COVERAGE, DEMO_TIME, validate_demo_time
 from heatbrief.errors import HeatBriefError
 from heatbrief.models import BriefingRequest
 from heatbrief.pdf_report import make_pdf
@@ -267,6 +267,7 @@ def create_app():
             "latest": recent[0] if recent else None,
             "latest_run": latest_run,
             "fixture": DEMO_TIME,
+            "demo_coverage": DEMO_COVERAGE,
             "workflow_url": "http://localhost:5678/workflow/heatbriefDemo001",
         }
 

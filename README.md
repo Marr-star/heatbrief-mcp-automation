@@ -62,7 +62,7 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }
 .\scripts\run-api.ps1
 ```
 
-API docs: `http://127.0.0.1:8000/docs`. Fixture coverage is limited to the three example points at 2025-09-20, 14:00 America/Phoenix. This mock does not generate weather for arbitrary dates or locations.
+API docs: `http://127.0.0.1:8000/docs`. The three demo sites support **2025-01-01 00:00 through 2027-12-31 23:59 America/Phoenix, inclusive**, at any minute: 1,095 dates and 1,576,800 time slots per site. The original sample keeps its fixed values; all other readings are reproducible synthetic scenarios with date/time-specific evidence IDs. They are not observed weather or forecasts. Other locations and instants outside this window remain unsupported.
 
 ## Verification
 

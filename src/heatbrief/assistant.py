@@ -8,7 +8,7 @@ from datetime import datetime
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from heatbrief.demo import validate_demo_time
+from heatbrief.demo import DEMO_COVERAGE_MESSAGE, validate_demo_time
 from heatbrief.errors import HeatBriefError
 from heatbrief.models import BriefingRequest, Location
 from heatbrief.reporting import narrative
@@ -195,10 +195,8 @@ async def reply(chat, store):
         }
     if any(term in lower for term in ("real data", "mock", "what can", "how does")):
         return {
-            "message": "This local demo compares fictional readings for the three named sites "
-            "on 20 September 2025 at 14:00 America/Phoenix. Choose the sites and requested time, "
-            "then run the comparison. Every result includes its evidence and a client draft. "
-            "Live FortyGuard is not connected.",
+            "message": DEMO_COVERAGE_MESSAGE + " Choose the sites and requested time, then run "
+            "the comparison. Each result includes evidence and a client draft.",
             "draft": chat.draft.model_dump(),
             "mode": assistant_mode(),
             "ready": False,

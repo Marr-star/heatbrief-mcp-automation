@@ -1,8 +1,10 @@
-"""Fictional fixtures over the real MCP stdio transport; never live data."""
+"""Fictional samples and synthetic scenarios over MCP stdio; never live data."""
 
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+
+from heatbrief.demo import DEMO_ZONE, REFERENCE, parse_demo_timestamp, synthetic_temperature
 
 mcp = FastMCP("HeatBrief MOCK temperature data")
 FIXTURES = {
@@ -15,24 +17,36 @@ FIXTURE_DATE_TIME = {"start_date": "2025-09-20", "start_time": "14:00", "filter_
 
 @mcp.tool(structured_output=True)
 def env_params(latitude: float, longitude: float, date_time: dict) -> dict[str, Any]:
-    """MOCK DATA ONLY. Get a fictional point reading for the documented demo fixture.
-
+    """MOCK ONLY. Fictional readings for three sites, 2025-01-01 00:00 through
+    2027-12-31 23:59 America/Phoenix inclusive, at any minute. date_time accepts
+    start_date YYYY-MM-DD, start_time HH:MM, filter_type 1 and optional IANA timezone
+    (default America/Phoenix). Values are deterministic synthetic scenarios, never
+    actual observations or forecasts. The original example keeps its fixed values.
     The normalized response is HeatBrief-owned, not a verified FortyGuard schema.
-    Reference temperature is deliberately not accepted as a measured observation.
     """
-    if date_time != FIXTURE_DATE_TIME:
-        raise ValueError("unsupported_date: Mock supports only 2025-09-20 at 14:00 America/Phoenix")
-    fixture = FIXTURES.get((latitude, longitude))
+    stamp = parse_demo_timestamp(date_time)
+    coordinates = (latitude, longitude)
+    fixture = FIXTURES.get(coordinates)
     if fixture is None:
         raise ValueError("unsupported_location: Use one of the three demo coordinates")
+    original = stamp == REFERENCE
+    source_id = (
+        f"mock-20250920-{latitude}-{longitude}"
+        if original
+        else f"mock-v2-{stamp.astimezone(DEMO_ZONE):%Y%m%dT%H%M}-{latitude}-{longitude}"
+    )
     return {
         "latitude": latitude,
         "longitude": longitude,
-        "temperature": fixture[1],
+        "temperature": fixture[1]
+        if original
+        else synthetic_temperature(fixture[1], stamp, coordinates),
         "unit": "C",
-        "observed_at": "2025-09-20T14:00:00-07:00",
-        "source": "HeatBrief fictional fixture — Mock data",
-        "source_id": f"mock-20250920-{latitude}-{longitude}",
+        "observed_at": stamp.isoformat(),
+        "source": "HeatBrief fictional fixture — Mock data"
+        if original
+        else "HeatBrief synthetic demo v2 — generated, not observations",
+        "source_id": source_id,
         "mock": True,
     }
 

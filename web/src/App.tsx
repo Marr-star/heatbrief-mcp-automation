@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { api, ApiError, downloadPdf, downloadText, setCsrf } from "./api";
 import { RequestDetails } from "./components/RequestDetails";
+import { demoTimeIssue } from "./demo";
 import {
   ClientBriefing,
   ComparisonCards,
@@ -53,6 +54,14 @@ const emptyDraft = (): Draft => ({
   time: "",
   timezone: "",
   locations: [],
+});
+const requestDraft = (value: Draft): Draft => ({
+  question: value.question,
+  client_name: value.client_name,
+  date: value.date,
+  time: value.time.slice(0, 5),
+  timezone: value.timezone,
+  locations: value.locations,
 });
 const welcome =
   "Tell me what you’re planning. I’ll help you compare temperatures, trace the evidence, and prepare a client briefing.";
@@ -237,17 +246,12 @@ export default function App() {
   const [reviewError, setReviewError] = useState("");
   const messageList = useRef<HTMLDivElement>(null);
   const busy = run?.state === "queued" || run?.state === "running";
-  const unsupportedDemoTime = Boolean(
-    boot?.data_mode === "mock" &&
-      draft.date &&
-      draft.time &&
-      draft.timezone &&
-      (draft.date !== boot.fixture.date ||
-        draft.time.slice(0, 5) !== boot.fixture.time ||
-        draft.timezone !== boot.fixture.timezone),
-  );
+  const timeIssue =
+    boot?.data_mode === "mock"
+      ? demoTimeIssue(draft, boot.demo_coverage)
+      : null;
   const ready =
-    !unsupportedDemoTime &&
+    !timeIssue &&
     draft.question.trim().length >= 10 &&
     draft.locations.length >= 2 &&
     Boolean(draft.date && draft.time && draft.timezone);
@@ -262,7 +266,7 @@ export default function App() {
         if (data.latest) {
           setResult(data.latest);
           setDraft({
-            ...data.latest.request,
+            ...requestDraft(data.latest.request),
             time: data.latest.request.time.slice(0, 5),
           });
           setFollowUp(data.latest.follow_up_draft);
@@ -279,7 +283,7 @@ export default function App() {
           if (data.latest_run.state !== "completed") {
             setResult(null);
             setDraft({
-              ...data.latest_run.request,
+              ...requestDraft(data.latest_run.request),
               time: data.latest_run.request.time.slice(0, 5),
             });
           }
@@ -362,7 +366,7 @@ export default function App() {
         method: "POST",
         body: JSON.stringify({
           message: text.trim(),
-          draft: base,
+          draft: requestDraft(base),
           briefing_id: briefingId,
         }),
       });
@@ -397,6 +401,17 @@ export default function App() {
     setMobileView("assistant");
     setMessages([message("assistant", welcome)]);
     setInput("");
+  }
+  function applyDemoTime(value: Pick<Draft, "date" | "time" | "timezone">) {
+    setDraft((previous) => ({
+      ...previous,
+      date: value.date,
+      time: value.time,
+      timezone: value.timezone,
+    }));
+    setRun(null);
+    setLastRequest(null);
+    setToast("");
   }
   function loadDemo(complete = true) {
     if (!boot || busy || chatBusy) return;
@@ -459,7 +474,7 @@ export default function App() {
         "/briefings/" + encodeURIComponent(item.request_id),
       );
       setResult(saved);
-      setDraft(saved.request);
+      setDraft(requestDraft(saved.request));
       setFollowUp(saved.follow_up_draft);
       setRun(null);
       setLastRequest(saved.request);
@@ -793,14 +808,10 @@ export default function App() {
               <RequestDetails
                 draft={draft}
                 catalog={boot.catalog}
-                fixture={boot.fixture}
-                unsupportedTime={unsupportedDemoTime}
-                onUseDemoTime={() => {
-                  setDraft((previous) => ({ ...previous, ...boot.fixture }));
-                  setRun(null);
-                  setLastRequest(null);
-                  setToast("");
-                }}
+                coverage={boot.demo_coverage}
+                timeIssue={timeIssue}
+                onUseDemoTime={() => applyDemoTime(boot.fixture)}
+                onPreset={applyDemoTime}
                 onChange={setDraft}
                 disabled={Boolean(busy)}
               />
@@ -1138,8 +1149,12 @@ export default function App() {
               <Info size={16} />
               <p>
                 <strong>Fictional measurements.</strong> The demo covers the
-                three selected sites on 20 September 2025 at 14:00
-                America/Phoenix. Live FortyGuard is not connected.
+                three selected sites from {boot.demo_coverage.start_date} at{" "}
+                {boot.demo_coverage.start_time} through{" "}
+                {boot.demo_coverage.end_date} at {boot.demo_coverage.end_time}{" "}
+                {boot.demo_coverage.timezone}, inclusive, every minute. Values
+                are deterministic synthetic scenarios. Live FortyGuard is not
+                connected.
               </p>
             </div>
             <div>

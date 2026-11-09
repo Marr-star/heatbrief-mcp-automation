@@ -109,9 +109,9 @@ async def test_complete_form_respects_dst_validation(tmp_path, monkeypatch):
 @pytest.mark.parametrize(
     "selection",
     [
-        "2030-01-01 at 14:00 America/Phoenix",
-        "2025-09-20 at 15:00 America/Phoenix",
-        "2025-09-20 at 14:00 Africa/Cairo",
+        "2024-12-31 at 23:59 America/Phoenix",
+        "2028-01-01 at 00:00 America/Phoenix",
+        "2025-01-01 at 06:59 UTC",
     ],
 )
 async def test_intake_explains_demo_coverage_without_overwriting_user_input(
@@ -122,8 +122,26 @@ async def test_intake_explains_demo_coverage_without_overwriting_user_input(
         ChatInput(message="Compare the three demo sites on " + selection), Store(tmp_path)
     )
     assert response["ready"] is False
-    assert "2025-09-20 at 14:00 America/Phoenix" in response["message"]
+    assert "2025-01-01 at 00:00 through 2027-12-31 at 23:59" in response["message"]
     assert "Live temperature data is not connected" in response["message"]
     assert response["draft"]["date"] == selection.split()[0]
     assert response["draft"]["time"] == selection.split()[2]
     assert response["draft"]["timezone"] == selection.split()[3]
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        "2025-09-09 at 14:00 America/Phoenix",
+        "2026-07-15 at 15:37 America/Phoenix",
+        "2026-11-09 at 18:45 Africa/Cairo",
+    ],
+)
+async def test_intake_accepts_expanded_dates_and_minutes(tmp_path, monkeypatch, selection):
+    monkeypatch.setenv("HEATBRIEF_ASSISTANT_MODE", "guided")
+    response = await reply(
+        ChatInput(message="Compare the three demo sites on " + selection), Store(tmp_path)
+    )
+    assert response["ready"] is True
+    assert not response["validation_errors"]
+    assert response["draft"]["time"] == selection.split()[2]

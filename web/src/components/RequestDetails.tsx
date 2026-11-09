@@ -5,23 +5,25 @@ import {
   MapPin,
   Settings2,
 } from "lucide-react";
-import type { Draft, Site } from "../types";
+import type { DemoCoverage, Draft, Site } from "../types";
 
 type Props = {
   draft: Draft;
   catalog: Site[];
-  fixture: Pick<Draft, "date" | "time" | "timezone">;
-  unsupportedTime: boolean;
+  coverage: DemoCoverage;
+  timeIssue: string | null;
   onUseDemoTime: () => void;
+  onPreset: (value: Pick<Draft, "date" | "time" | "timezone">) => void;
   onChange: (draft: Draft) => void;
   disabled: boolean;
 };
 export function RequestDetails({
   draft,
   catalog,
-  fixture,
-  unsupportedTime,
+  coverage,
+  timeIssue,
   onUseDemoTime,
+  onPreset,
   onChange,
   disabled,
 }: Props) {
@@ -70,6 +72,26 @@ export function RequestDetails({
             </label>
           ))}
         </div>
+        <label>
+          <span className="field-label">Date and time examples</span>
+          <select
+            aria-label="Demo date and time example"
+            value=""
+            onChange={(event) => {
+              const preset = coverage.presets.find(
+                (value) => value.label === event.target.value,
+              );
+              if (preset) onPreset(preset);
+            }}
+          >
+            <option value="">Choose an example, or enter your own</option>
+            {coverage.presets.map((preset) => (
+              <option key={preset.label} value={preset.label}>
+                {preset.label} · {preset.date} {preset.time}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="field-row">
           <label>
             <span className="field-label">
@@ -77,7 +99,7 @@ export function RequestDetails({
             </span>
             <input
               aria-label="Comparison date"
-              aria-invalid={unsupportedTime}
+              aria-invalid={Boolean(timeIssue)}
               aria-describedby="demo-time-coverage"
               type="date"
               value={draft.date}
@@ -90,9 +112,10 @@ export function RequestDetails({
             </span>
             <input
               aria-label="Comparison time"
-              aria-invalid={unsupportedTime}
+              aria-invalid={Boolean(timeIssue)}
               aria-describedby="demo-time-coverage"
               type="time"
+              step={60}
               value={draft.time}
               onChange={(e) => update("time", e.target.value)}
             />
@@ -102,7 +125,7 @@ export function RequestDetails({
           <span className="field-label">Timezone</span>
           <select
             aria-label="Comparison timezone"
-            aria-invalid={unsupportedTime}
+            aria-invalid={Boolean(timeIssue)}
             aria-describedby="demo-time-coverage"
             value={draft.timezone}
             onChange={(e) => update("timezone", e.target.value)}
@@ -112,6 +135,15 @@ export function RequestDetails({
             <option value="America/New_York">America/New_York</option>
             <option value="Africa/Cairo">Africa/Cairo</option>
             <option value="UTC">UTC</option>
+            {draft.timezone &&
+            ![
+              "America/Phoenix",
+              "America/New_York",
+              "Africa/Cairo",
+              "UTC",
+            ].includes(draft.timezone) ? (
+              <option value={draft.timezone}>{draft.timezone}</option>
+            ) : null}
           </select>
         </label>
         <label>
@@ -123,24 +155,34 @@ export function RequestDetails({
             onChange={(e) => update("client_name", e.target.value)}
           />
         </label>
-        <div className={unsupportedTime ? "demo-time-warning" : "fixture-note"}>
-          <p
-            id="demo-time-coverage"
-            role={unsupportedTime ? "alert" : undefined}
-          >
-            {unsupportedTime
-              ? `No demo readings for this selection. Use ${fixture.date} at ${fixture.time} ${fixture.timezone}.`
-              : `Demo readings only: ${fixture.date} at ${fixture.time} ${fixture.timezone}.`}
+        <div className={timeIssue ? "demo-time-warning" : "demo-window"}>
+          <p id="demo-time-coverage" role={timeIssue ? "alert" : undefined}>
+            {timeIssue || (
+              <>
+                <strong>Synthetic demo window</strong>
+                <br />
+                From {coverage.start_date} at {coverage.start_time}
+                <br />
+                Through {coverage.end_date} at {coverage.end_time}
+                <br />
+                {coverage.timezone} · inclusive · every minute
+              </>
+            )}
           </p>
-          {unsupportedTime ? (
+          {timeIssue ? (
             <button
               type="button"
               className="button button-secondary"
               onClick={onUseDemoTime}
             >
-              Use demo date and time
+              Use default demo time
             </button>
-          ) : null}
+          ) : (
+            <p className="muted">
+              Choose any instant inside the window. Values are generated, not
+              weather observations.
+            </p>
+          )}
         </div>
       </fieldset>
     </details>

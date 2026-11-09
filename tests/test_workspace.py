@@ -223,9 +223,9 @@ def test_interrupted_jobs_are_recoverable(tmp_path, saved_briefing):
 @pytest.mark.parametrize(
     "changes",
     [
-        {"date": "2030-01-01"},
-        {"time": "15:00"},
-        {"timezone": "Africa/Cairo"},
+        {"date": "2024-12-31", "time": "23:59"},
+        {"date": "2028-01-01", "time": "00:00"},
+        {"date": "2025-01-01", "time": "06:59", "timezone": "UTC"},
     ],
 )
 async def test_unsupported_demo_time_is_rejected_before_starting_workflow(
@@ -238,7 +238,34 @@ async def test_unsupported_demo_time_is_rejected_before_starting_workflow(
     response = await client.post("/api/runs", headers=headers, json=payload)
     assert response.status_code == 422
     assert response.json()["error"] == "unsupported_date"
-    assert "2025-09-20 at 14:00 America/Phoenix" in response.json()["message"]
+    assert "2025-01-01 at 00:00 through 2027-12-31 at 23:59" in response.json()["message"]
     assert calls == []
     with pytest.raises(HeatBriefError, match="not found"):
         JobStore(root / "data").get_job(payload["request_id"])
+
+
+@pytest.mark.parametrize(
+    "day,clock,zone",
+    [
+        ("2025-01-01", "00:00", "America/Phoenix"),
+        ("2026-07-15", "15:37", "America/Phoenix"),
+        ("2028-01-01", "06:59", "UTC"),
+    ],
+)
+async def test_workspace_passes_supported_instants_to_automation(
+    workspace_client, day, clock, zone
+):
+    client, calls, _behavior, _root = workspace_client
+    headers = await session_headers(client)
+    payload = json.loads(Path("examples/request.json").read_text())
+    payload.update(request_id="expanded-workspace", date=day, time=clock, timezone=zone)
+    boot = (await client.get("/api/bootstrap")).json()
+    assert boot["demo_coverage"]["start"] == "2025-01-01T00:00:00-07:00"
+    assert boot["demo_coverage"]["end"] == "2027-12-31T23:59:00-07:00"
+    assert len(boot["demo_coverage"]["presets"]) == 6
+    response = await client.post("/api/runs", headers=headers, json=payload)
+    assert response.status_code == 202
+    assert (await wait_job(client, payload["request_id"]))["state"] == "completed"
+    assert calls[0]["date"] == day
+    assert calls[0]["time"] == clock + ":00"
+    assert calls[0]["timezone"] == zone

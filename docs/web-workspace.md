@@ -18,7 +18,17 @@ Open http://127.0.0.1:8001, or use VS Code's **Terminal → Run Task → HeatBri
 5. Open **Client briefing**, edit the follow-up and save it. Approval/rejection requires the separate reviewer key from your local `.env` (`HEATBRIEF_REVIEW_TOKEN`). The key is entered only for that review request and is not saved by the frontend. Approval records a decision for manual sending.
 6. Use **Saved briefings** to revisit reports. **Replay saved request** runs the same request through n8n and reuses its stored result.
 
-The **Clarify a request** example intentionally omits date/time/timezone so you can see the assistant ask for missing details. Unsupported dates, times and timezones are blocked before starting a workflow. Choose **Use demo date and time** to explicitly apply the supported sample time while keeping your other request details. All demo temperatures are fictional.
+The **Clarify a request** example intentionally omits date/time/timezone so you can see the assistant ask for missing details.
+
+## Demo window and examples
+
+The supported window is **January 1, 2025 at 00:00 through December 31, 2027 at 23:59, America/Phoenix**, including both endpoints. Every minute inside it is supported: 1,095 dates and 1,576,800 time slots per site. It is a window of allowed individual comparison times; each comparison uses the single instant you select.
+
+In **Request details**, choose a **Date and time example** (winter morning, spring noon, summer afternoon, autumn evening, late night or the original example), or enter any date and minute in the window. The timezone is applied before checking the bounds; equivalent instants in another IANA timezone work. Invalid dates, DST gaps/repeated hours and out-of-window instants require correction before a workflow starts.
+
+The three sites receive deterministic synthetic values with seasonal, daytime and per-day variation. Repeating a point/time gives the same value. These rules are fictional scenarios, not a Phoenix climate model, historical observations or a forecast. Generated evidence uses a `mock-v2-` identifier containing its canonical date and minute. The original September 20, 2025 14:00 example keeps its fixed values and IDs, and saved briefings are replayed without recalculation.
+
+Additional CLI requests: `examples/request-winter-morning.json` and `examples/request-summer-afternoon.json`. All demo temperatures remain fictional.
 
 ## Guided and optional AI intake
 

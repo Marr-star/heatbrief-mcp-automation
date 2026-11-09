@@ -64,6 +64,20 @@ export type Run = {
   elapsed_ms: number | null;
   execution_id: string | null;
 };
+export type DemoPreset = Pick<Draft, "date" | "time" | "timezone"> & {
+  label: string;
+};
+export type DemoCoverage = {
+  start: string;
+  end: string;
+  timezone: string;
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+  step_minutes: number;
+  presets: DemoPreset[];
+};
 export type Bootstrap = {
   csrf: string;
   assistant_mode: "ai" | "guided";
@@ -74,6 +88,7 @@ export type Bootstrap = {
   latest: Briefing | null;
   latest_run: Run | null;
   fixture: { date: string; time: string; timezone: string };
+  demo_coverage: DemoCoverage;
   workflow_url: string;
 };
 export type ChatMessage = {

@@ -10,7 +10,7 @@ Use `examples/request.json`. Supply a local date, HH:MM time, IANA timezone and 
 
 ## Unsupported mock date or coordinate
 
-The fixed fixture is 2025-09-20, 14:00 America/Phoenix at the three example points. Mock mode is intentionally not a weather generator. A different date or point is unsupported. An incomplete result compares available points only and names missing evidence.
+The synthetic demo covers the three example points from 2025-01-01 at 00:00 through 2027-12-31 at 23:59 America/Phoenix, inclusive, every minute. Choose a date/time example or any instant inside that window. Other locations and out-of-window instants are unsupported. A valid IANA timezone is required; DST gaps and repeated hours need another unambiguous local time. Generated values are fictional scenarios, not observations or forecasts. An incomplete result compares available points only and names missing evidence.
 
 ## Credentials and live mode
 
