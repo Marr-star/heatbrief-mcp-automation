@@ -1,5 +1,7 @@
 """Fictional fixtures over the real MCP stdio transport; never live data."""
 
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("HeatBrief MOCK temperature data")
@@ -11,8 +13,8 @@ FIXTURES = {
 FIXTURE_DATE_TIME = {"start_date": "2025-09-20", "start_time": "14:00", "filter_type": 1}
 
 
-@mcp.tool()
-def env_params(latitude: float, longitude: float, date_time: dict) -> dict:
+@mcp.tool(structured_output=True)
+def env_params(latitude: float, longitude: float, date_time: dict) -> dict[str, Any]:
     """MOCK DATA ONLY. Get a fictional point reading for the documented demo fixture.
 
     The normalized response is HeatBrief-owned, not a verified FortyGuard schema.

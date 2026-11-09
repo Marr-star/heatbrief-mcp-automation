@@ -1,0 +1,13 @@
+{
+  "request_id": "demo-phoenix-001",
+  "client_name": "Acme Demo Events (fictional)",
+  "question": "Which of these three locations has the lowest temperature for our site visit?",
+  "date": "2025-09-20",
+  "time": "14:00",
+  "timezone": "America/Phoenix",
+  "locations": [
+    {"name": "Phoenix Civic Plaza", "latitude": 33.4484, "longitude": -112.074},
+    {"name": "Tempe Riverside", "latitude": 33.4255, "longitude": -111.94},
+    {"name": "Scottsdale Courtyard", "latitude": 33.4942, "longitude": -111.9261}
+  ]
+}
