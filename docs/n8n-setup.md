@@ -7,8 +7,8 @@ For the project-local instance, use [the automatic start/test tasks](local-autom
 ## Start the bridge
 
 ```powershell
-Copy-Item .env.example .env
-# Edit .env: use different random values for HEATBRIEF_API_TOKEN and HEATBRIEF_REVIEW_TOKEN.
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+# On first setup, replace the two token placeholders with different random values.
 .\scripts\run-api.ps1
 ```
 

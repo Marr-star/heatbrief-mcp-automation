@@ -33,3 +33,5 @@ Open http://localhost:5678/workflow/heatbriefDemo001. For this isolated local de
 Each test run uses a new request ID and writes its report, follow-up, JSON result and check summary under the printed `reports/automation-...` directory. The status stays `draft_pending_review`; the test does not approve or send anything.
 
 The n8n instance receives only the webhook credential and HeatBrief automation token. The separate human-review token stays outside n8n. All readings remain fictional mock data. Live FortyGuard integration remains gated.
+
+The local `.env` is already configured after project setup. If you later change `HEATBRIEF_API_TOKEN`, update the `HeatBrief API automation token` Header Auth credential in n8n to match.

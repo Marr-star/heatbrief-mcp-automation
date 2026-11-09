@@ -47,7 +47,7 @@ The automation uses an HTTP Request node to reach the tested local bridge; it do
 Start the local API after replacing both token placeholders in `.env`:
 
 ```powershell
-Copy-Item .env.example .env
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 .\scripts\run-api.ps1
 ```
 
