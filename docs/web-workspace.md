@@ -18,7 +18,7 @@ Open http://127.0.0.1:8001, or use VS Code's **Terminal → Run Task → HeatBri
 5. Open **Client briefing**, edit the follow-up and save it. Approval/rejection requires the separate reviewer key from your local `.env` (`HEATBRIEF_REVIEW_TOKEN`). The key is entered only for that review request and is not saved by the frontend. Approval records a decision for manual sending.
 6. Use **Saved briefings** to revisit reports. **Replay saved request** runs the same request through n8n and reuses its stored result.
 
-The **Clarify a request** example intentionally omits date/time/timezone so you can see the assistant ask for missing details.
+Chat asks for missing details automatically. Reply with those details in the conversation to continue the pending comparison.
 
 ## Demo window and examples
 

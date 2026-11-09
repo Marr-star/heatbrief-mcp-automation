@@ -431,14 +431,14 @@ export default function App() {
     setLastRequest(null);
     setToast("");
   }
-  function loadDemo(complete = true) {
+  function loadDemo() {
     if (!boot || busy || chatBusy) return;
     const next: Draft = {
       ...emptyDraft(),
       question:
         "Compare the highest and lowest temperatures across these three locations for our site visit",
       locations: boot.catalog,
-      ...(complete ? boot.fixture : {}),
+      ...boot.fixture,
     };
     setResult(null);
     setRun(null);
@@ -450,9 +450,7 @@ export default function App() {
     setSelectedSite(null);
     setMessages([message("assistant", welcome)]);
     void sendChat(
-      complete
-        ? "Compare the three demo sites for our site visit on 2025-09-20 at 14:00 America/Phoenix."
-        : "Compare the three demo sites for our site visit.",
+      "Compare the three demo sites for our site visit on 2025-09-20 at 14:00 America/Phoenix.",
       next,
       null,
     );
@@ -770,18 +768,8 @@ export default function App() {
                 ) : null}
               </div>
               <div className="prompt-chips">
-                <button
-                  onClick={() => loadDemo(true)}
-                  disabled={busy || chatBusy}
-                >
+                <button onClick={() => loadDemo()} disabled={busy || chatBusy}>
                   <Sun size={13} /> Run the demo
-                </button>
-                <button
-                  onClick={() => loadDemo(false)}
-                  disabled={busy || chatBusy}
-                >
-                  Clarify a request
-                  <ArrowUpRight size={12} />
                 </button>
               </div>
               <form
@@ -987,7 +975,7 @@ export default function App() {
                       </p>
                       <button
                         className="button button-secondary"
-                        onClick={() => loadDemo(true)}
+                        onClick={() => loadDemo()}
                         disabled={busy || chatBusy}
                       >
                         Explore the demo
