@@ -29,9 +29,21 @@ with httpx.Client(base_url=base_url, timeout=70, trust_env=False) as client:
     review = {"decision": "approve", "reviewer": "Fictional HTTP smoke reviewer"}
     assert client.post(path + "/review", headers=headers, json=review).status_code == 401
     if os.getenv("HEATBRIEF_REVIEW_TOKEN"):
-        approved = client.post(path + "/review", json=review, headers={
-            "Authorization": f"Bearer {os.environ['HEATBRIEF_REVIEW_TOKEN']}",
-        })
+        approved = client.post(
+            path + "/review",
+            json=review,
+            headers={
+                "Authorization": f"Bearer {os.environ['HEATBRIEF_REVIEW_TOKEN']}",
+            },
+        )
         assert approved.json()["status"] == "approved_for_manual_send"
-    print(json.dumps({"http_flow": "passed", "request_id": payload["request_id"],
-                      "lowest_c": body["comparison"]["lowest_c"], "mock": True}))
+    print(
+        json.dumps(
+            {
+                "http_flow": "passed",
+                "request_id": payload["request_id"],
+                "lowest_c": body["comparison"]["lowest_c"],
+                "mock": True,
+            }
+        )
+    )

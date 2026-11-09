@@ -2,7 +2,7 @@
 
 An evidence-backed temperature analyst and client briefing workflow built with Python, MCP, SQLite and n8n.
 
-**Current status: Phase 3 — MCP comparison, evidence-backed reports, an authenticated API and n8n workflow export. FortyGuard live integration and n8n runtime execution are unverified.**
+**Current status: Phase 4 — the mock workflow, failure handling and local verification are complete; CI is configured. FortyGuard live integration and n8n runtime execution are unverified.**
 
 ## Quick start
 
@@ -27,3 +27,5 @@ See [the build plan](docs/plan.md) and [the integration notes](docs/integration.
 ## Automation
 
 Follow [n8n setup](docs/n8n-setup.md) to run the local API and import [the workflow](workflows/client-briefing.json). The same Python service powers the CLI, agent tools and webhook bridge. Reports are saved once per request ID. Human decisions require a separate review credential. No follow-up is sent automatically.
+
+See [test evidence](docs/testing-report.md), [troubleshooting](docs/troubleshooting.md) and [MCP feedback](mcp-feedback.md). Failures include bounded transient retries, explicit missing data, strict time/coordinate provenance and duplicate-request protection.

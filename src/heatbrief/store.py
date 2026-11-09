@@ -2,6 +2,7 @@ import hashlib
 import json
 import sqlite3
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from heatbrief.errors import HeatBriefError
@@ -18,8 +19,14 @@ class Store:
                 lease_expires REAL NOT NULL, result TEXT
             )""")
 
+    @contextmanager
     def connect(self):
-        return sqlite3.connect(self.path, timeout=10)
+        db = sqlite3.connect(self.path, timeout=10)
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
 
     @staticmethod
     def fingerprint(request, mode):

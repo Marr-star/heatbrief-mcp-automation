@@ -27,7 +27,7 @@ def authorize(provided: str | None, variable: str):
         raise HeatBriefError(
             "not_configured", f"Configure {variable} before using this endpoint", 503
         )
-    if not provided or not hmac.compare_digest(provided, f"Bearer {expected}"):
+    if not provided or not hmac.compare_digest(provided.encode(), f"Bearer {expected}".encode()):
         raise HeatBriefError("unauthorized", "A valid Bearer token is required", 401)
 
 
@@ -36,6 +36,10 @@ def api_auth(authorization: str | None = Header(default=None)):
 
 
 def review_auth(authorization: str | None = Header(default=None)):
+    if os.getenv("HEATBRIEF_REVIEW_TOKEN") == os.getenv("HEATBRIEF_API_TOKEN"):
+        raise HeatBriefError(
+            "not_configured", "The review token must differ from the API token", 503
+        )
     authorize(authorization, "HEATBRIEF_REVIEW_TOKEN")
 
 

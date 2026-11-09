@@ -28,6 +28,24 @@ class MockProvider:
             )
 
 
+async def measure_with_retry(provider, location, request, attempts=3, base_delay=0.1):
+    """Retry transient failures only, bounded by attempts and the comparison's total timeout."""
+    for attempt in range(attempts):
+        try:
+            return await provider.measure(location, request)
+        except (TimeoutError, HeatBriefError) as exc:
+            transient = isinstance(exc, TimeoutError) or exc.code in {"rate_limited", "timeout"}
+            if not transient:
+                raise
+            if attempt == attempts - 1:
+                if isinstance(exc, TimeoutError):
+                    raise HeatBriefError(
+                        "timeout", "MCP timed out after bounded retries", 504
+                    ) from exc
+                raise
+            await asyncio.sleep(base_delay * 2**attempt)
+
+
 @asynccontextmanager
 async def provider_session(mode: str | None = None):
     mode = mode or os.getenv("HEATBRIEF_MODE", "mock")

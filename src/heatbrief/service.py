@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from heatbrief.errors import HeatBriefError
 from heatbrief.models import Measurement
+from heatbrief.providers import measure_with_retry
 from heatbrief.reporting import render_draft, render_report
 
 
@@ -28,7 +29,9 @@ async def compare(request, provider):
     for location in request.locations:
         row = location.model_dump()
         try:
-            value = Measurement.model_validate(await provider.measure(location, request))
+            value = Measurement.model_validate(
+                await measure_with_retry(provider, location, request)
+            )
             if (value.latitude, value.longitude) != (location.latitude, location.longitude):
                 raise HeatBriefError("evidence_mismatch", "Measurement coordinates do not match")
             if value.observed_at != request.timestamp:
