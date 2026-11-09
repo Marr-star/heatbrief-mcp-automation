@@ -4,6 +4,8 @@ Local environment: Windows, Python 3.12.12. Mock fixtures only. Commands: `uv ru
 
 Local result on 2026-11-09: **35 tests passed**, lint passed, formatting passed, workflow graph/JavaScript checks passed. A real local HTTP smoke run also passed.
 
+Web workspace phase: **47 tests passed** locally. The React/TypeScript production build passed. Browser checks covered the desktop two-panel layout, narrow-screen panels, missing-field clarification, a real n8n comparison (execution **13**, request `web-5ba6dd8644f4413688`), source evidence, a saved draft edit, PDF download and rejection of an invalid reviewer key. The two-page exported PDF was rendered and visually inspected for readability, provenance and mock labels. Optional AI intake was checked with a simulated provider response; no live model key was configured.
+
 The two-minute scripted terminal recording contains actual successful MCP/CLI commands, a saved-result replay and a missing-timezone failure. Its embedded offline player's playback JavaScript passed a local harness check; visual browser playback was not tested.
 
 | Scenario | Observed result | Evidence type |

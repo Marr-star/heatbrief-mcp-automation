@@ -80,6 +80,34 @@ class Store:
             raise HeatBriefError("not_found", "Completed briefing not found", 404)
         return json.loads(row[0])
 
+    def recent(self, limit=40):
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT result FROM briefings WHERE result IS NOT NULL ORDER BY rowid DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [json.loads(row[0]) for row in rows]
+
+    def edit_draft(self, request_id, content):
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT result FROM briefings WHERE request_id=? AND result IS NOT NULL",
+                (request_id,),
+            ).fetchone()
+            if not row:
+                raise HeatBriefError("not_found", "Completed briefing not found", 404)
+            result = json.loads(row[0])
+            if result.get("review"):
+                raise HeatBriefError("review_conflict", "A reviewed briefing cannot be edited", 409)
+            result.setdefault("original_follow_up_draft", result["follow_up_draft"])
+            result["follow_up_draft"] = content
+            db.execute(
+                "UPDATE briefings SET result=? WHERE request_id=?",
+                (json.dumps(result, allow_nan=False), request_id),
+            )
+        return result
+
     def review(self, request_id, review):
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")

@@ -11,5 +11,7 @@ reports/
 *.sqlite*
 node_modules/
 .automation/
+web/dist/
+*.tsbuildinfo
 .DS_Store
 Thumbs.db

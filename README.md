@@ -6,9 +6,20 @@ Turn a business question and explicit coordinates into a reproducible temperatur
 
 **Demo status:** working mock prototype, including a verified local n8n automation. All temperatures and client details are fictional. Live FortyGuard integration is gated until access, transport and response schemas are verified.
 
-![Generated preview of the sample briefing, clearly labeled Mock data](docs/assets/report-preview.svg)
+## Open the briefing workspace
 
-*Preview generated from the included sample briefing. [Sample report](examples/generated/demo-phoenix-001/report.md) · [Draft follow-up](examples/generated/demo-phoenix-001/follow-up.txt) · [CI runs](https://github.com/Marr-star/heatbrief-mcp-automation/actions)*
+```powershell
+uv sync --locked
+uv run python scripts/start-workspace.py
+```
+
+Open **http://127.0.0.1:8001**. In VS Code you can use **Terminal → Run Task → HeatBrief: open web workspace**.
+
+The website provides guided request intake, a location map, comparison cards, evidence, real n8n run tracking, saved briefings, editable client follow-ups, reviewer approval and PDF/Markdown downloads. It runs locally with your existing automation. Guided mode works without a model key; optional AI intake is documented in [the workspace guide](docs/web-workspace.md).
+
+![Local HeatBrief workspace with a completed n8n run, comparison map and mock temperature evidence](docs/assets/workspace-preview.jpg)
+
+*Local workspace after a real n8n execution using fictional demo temperatures. [Sample report](examples/generated/demo-phoenix-001/report.md) · [Draft follow-up](examples/generated/demo-phoenix-001/follow-up.txt) · [CI runs](https://github.com/Marr-star/heatbrief-mcp-automation/actions)*
 
 ## Run the demo
 
@@ -63,7 +74,7 @@ node scripts/check-workflow.cjs
 node scripts/check-demo.cjs
 ```
 
-The test suite covers real MCP stdio round trips, timezones/DST, provenance and units, missing evidence, bounded retries, concurrent duplicates, persistent replay, API authentication and human review. A real local HTTP smoke test passed. GitHub CI runs the Python suite and workflow checks on Windows and Ubuntu.
+The test suite covers real MCP stdio round trips, timezones/DST, provenance and units, missing evidence, bounded retries, concurrent duplicates, persistent replay, API authentication, browser sessions/CSRF, intake, workspace run tracking, draft edits, PDF content and human review. A real local HTTP smoke test passed. GitHub CI runs Python checks on Windows and Ubuntu and builds the React frontend.
 
 See [test evidence and limits](docs/testing-report.md), [MCP feedback](mcp-feedback.md), [troubleshooting](docs/troubleshooting.md), [example prompts](examples/prompts.md) and [build phases](docs/plan.md).
 
